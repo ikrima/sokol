@@ -220,6 +220,7 @@ typedef struct simgui_desc_t {
     const char* ini_filename;
     bool no_default_font;
     bool disable_hotkeys;   /* don't let ImGui handle Ctrl-A,C,V,X,Y,Z */
+    ImGuiContext* imgui_context;
 } simgui_desc_t;
 
 SOKOL_API_DECL void simgui_setup(const simgui_desc_t* desc);
@@ -759,8 +760,10 @@ SOKOL_API_IMPL void simgui_setup(const simgui_desc_t* desc) {
 
     /* initialize Dear ImGui */
     #if defined(__cplusplus)
-        ImGui::CreateContext();
-        ImGui::StyleColorsDark();
+        if (!_simgui.desc.imgui_context) {
+            ImGui::CreateContext();
+            ImGui::StyleColorsDark();
+        }
         ImGuiIO* io = &ImGui::GetIO();
         if (!_simgui.desc.no_default_font) {
             io->Fonts->AddFontDefault();
@@ -982,7 +985,7 @@ SOKOL_API_IMPL void simgui_new_frame(int width, int height, double delta_time) {
 
 SOKOL_API_IMPL void simgui_render(void) {
     #if defined(__cplusplus)
-        ImGui::Render();
+            ImGui::Render();
         ImDrawData* draw_data = ImGui::GetDrawData();
         ImGuiIO* io = &ImGui::GetIO();
     #else
