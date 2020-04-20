@@ -1115,14 +1115,16 @@ _SOKOL_PRIVATE bool _simgui_is_ctrl(uint32_t modifiers) {
     }
 }
 
+
+#if TEMPENABLE
 _SOKOL_PRIVATE ImGuiViewport* _simgui_find_viewport_by_platformhandleraw(void* platform_handle_raw) {
     ImGuiContext& g = *ImGui::GetCurrentContext();
-    for (int i = 0; i != g.Viewports.Size; i++)
+    for (int i = 0; i < g.Viewports.Size; i++)
         if (g.Viewports[i]->PlatformHandleRaw == platform_handle_raw)
             return g.Viewports[i];
     return nullptr;
 };
-
+//TODO: ikrimae: #Sokol-Multiviewports: GetFocusedWindow doesn't actually fully work bc Win10 allows you to send mouse events to non-focused windows
 _SOKOL_PRIVATE void _simgui_handle_viewport_mouse(const sapp_event* ev) {
     const float dpi_scale = _simgui.desc.dpi_scale;
     #if defined(__cplusplus)
@@ -1159,16 +1161,24 @@ _SOKOL_PRIVATE void _simgui_handle_viewport_mouse(const sapp_event* ev) {
         if (!::GetCursorPos(&mouse_screen_pos))
             return;
 
-        HWND mainHwnd = (HWND)sapp_win32_get_hwnd();
         if (HWND focused_hwnd = ::GetForegroundWindow())
         {
+            HWND mainHwnd = (HWND)sapp_win32_get_hwnd();
             if (::IsChild(focused_hwnd, mainHwnd))
                 focused_hwnd = mainHwnd;
         
             // Multi-viewport mode: mouse position in OS absolute coordinates (io.MousePos is (0,0) when the mouse is on the upper-left of the primary monitor)
             // This is the position you can get with GetCursorPos(). In theory adding viewport->Pos is also the reverse operation of doing ScreenToClient().
-            if (_simgui_find_viewport_by_platformhandleraw((void*)(uintptr_t)(focused_hwnd)) != NULL)
+            if (_simgui_find_viewport_by_platformhandleraw((void*)(uintptr_t)(focused_hwnd)) != NULL) {
                 io->MousePos = ImVec2(float(mouse_screen_pos.x/dpi_scale), float(mouse_screen_pos.y/dpi_scale));
+            }
+            else if (ImGui::FindViewportByPlatformHandle((void*)(uintptr_t)(ev->window.id))) {
+                //HWND wndwHwnd = (HWND)sapp_win32_get_hwnd_window(ev->window);
+                //SOKOL_ASSERT(wndwHwnd == focused_hwnd);
+                //SOKOL_ASSERT(false);
+                io->MousePos.x = ev->mouse_x / dpi_scale;
+                io->MousePos.y = ev->mouse_y / dpi_scale;
+            }            
         }
 
         // (Optional) When using multiple viewports: set io.MouseHoveredViewport to the viewport the OS mouse cursor is hovering.
@@ -1183,7 +1193,8 @@ _SOKOL_PRIVATE void _simgui_handle_viewport_mouse(const sapp_event* ev) {
                     io->MouseHoveredViewport = viewport->ID;
     }
 }
-  
+#endif
+
 SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
     const float dpi_scale = _simgui.desc.dpi_scale;
     #if defined(__cplusplus)
@@ -1193,26 +1204,33 @@ SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
     #endif
     _simgui_set_imgui_modifiers(io, ev->modifiers);
     switch (ev->type) {
-        case SAPP_EVENTTYPE_MOUSE_DOWN:
-            _simgui_handle_viewport_mouse(ev);
-            //io->MousePos.x = ev->mouse_x / dpi_scale;
-            //io->MousePos.y = ev->mouse_y / dpi_scale;
+        case SAPP_EVENTTYPE_MOUSE_DOWN: {
+            bool is_any_mouse_down = false; for(bool btn : _simgui.btn_down) { is_any_mouse_down |= btn; }
+            if (!is_any_mouse_down && ::GetCapture() == NULL) {
+                ::SetCapture((HWND)sapp_win32_get_hwnd_window(ev->window));
+            }
+            io->MousePos.x = ev->mouse_x / dpi_scale;
+            io->MousePos.y = ev->mouse_y / dpi_scale;
             if (ev->mouse_button < 3) {
                 _simgui.btn_down[ev->mouse_button] = true;
             }
             break;
-        case SAPP_EVENTTYPE_MOUSE_UP:
-            _simgui_handle_viewport_mouse(ev);
-            //io->MousePos.x = ev->mouse_x / dpi_scale;
-            //io->MousePos.y = ev->mouse_y / dpi_scale;
+        }
+        case SAPP_EVENTTYPE_MOUSE_UP: {
+            bool is_any_mouse_down = false; for (bool btn : _simgui.btn_down) { is_any_mouse_down |= btn; }
+            if (!is_any_mouse_down && ::GetCapture() == (HWND)sapp_win32_get_hwnd_window(ev->window)) {
+                ::ReleaseCapture();
+            }
+            io->MousePos.x = ev->mouse_x / dpi_scale;
+            io->MousePos.y = ev->mouse_y / dpi_scale;
             if (ev->mouse_button < 3) {
                 _simgui.btn_up[ev->mouse_button] = true;
             }
             break;
+        }
         case SAPP_EVENTTYPE_MOUSE_MOVE:
-            _simgui_handle_viewport_mouse(ev);
-            //io->MousePos.x = ev->mouse_x / dpi_scale;
-            //io->MousePos.y = ev->mouse_y / dpi_scale;
+            io->MousePos.x = ev->mouse_x / dpi_scale;
+            io->MousePos.y = ev->mouse_y / dpi_scale;
             break;
         case SAPP_EVENTTYPE_MOUSE_ENTER:
         case SAPP_EVENTTYPE_MOUSE_LEAVE:
@@ -1228,20 +1246,17 @@ SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
             break;
         case SAPP_EVENTTYPE_TOUCHES_BEGAN:
             _simgui.btn_down[0] = true;
-            _simgui_handle_viewport_mouse(ev);
-            //io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
-            //io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
+            io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
+            io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
             break;
         case SAPP_EVENTTYPE_TOUCHES_MOVED:
-            _simgui_handle_viewport_mouse(ev);
-            //io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
-            //io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
+            io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
+            io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
             break;
         case SAPP_EVENTTYPE_TOUCHES_ENDED:
             _simgui.btn_up[0] = true;
-            _simgui_handle_viewport_mouse(ev);
-            //io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
-            //io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
+            io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
+            io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
             break;
         case SAPP_EVENTTYPE_TOUCHES_CANCELLED:
             _simgui.btn_up[0] = _simgui.btn_down[0] = false;

@@ -110,6 +110,14 @@ static void update_mouse_pos()
 
   if (!::GetCursorPos(&mouse_screen_pos)) return;
 
+  auto _find_viewport_by_platformhandleraw = [](HWND platform_handle_raw) -> ImGuiViewportP* {
+      ImGuiContext& g = *ImGui::GetCurrentContext();
+      for (int i = 0; i < g.Viewports.Size; i++)
+          if (g.Viewports[i]->PlatformHandleRaw == platform_handle_raw)
+              return g.Viewports[i];
+      return nullptr;
+  };
+
   HWND mainHwnd = (HWND) sapp_win32_get_hwnd();
   if (HWND focused_hwnd = ::GetForegroundWindow()) {
     if (::IsChild(focused_hwnd, mainHwnd)) focused_hwnd = mainHwnd;
@@ -117,7 +125,7 @@ static void update_mouse_pos()
     // Multi-viewport mode: mouse position in OS absolute coordinates (io.MousePos is (0,0) when the mouse is on the upper-left of the
     // primary monitor) This is the position you can get with GetCursorPos(). In theory adding viewport->Pos is also the reverse operation
     // of doing ScreenToClient().
-    if (_simgui_find_viewport_by_platformhandleraw((void*) (uintptr_t)(focused_hwnd)) != NULL)
+    if (_find_viewport_by_platformhandleraw(focused_hwnd) != NULL)
       io->MousePos = ImVec2(float(mouse_screen_pos.x / dpi_scale), float(mouse_screen_pos.y / dpi_scale));
   }
 
@@ -129,7 +137,7 @@ static void update_mouse_pos()
   // relying on the rectangles and last focused time of every viewports it knows about. It will be unaware of foreign windows that may be
   // sitting between or over your windows.
   if (HWND hovered_hwnd = ::WindowFromPoint(mouse_screen_pos))
-    if (ImGuiViewport* viewport = _simgui_find_viewport_by_platformhandleraw((void*) hovered_hwnd))
+    if (ImGuiViewport* viewport = _find_viewport_by_platformhandleraw(hovered_hwnd))
       if ((viewport->Flags & ImGuiViewportFlags_NoInputs)
           == 0)    // FIXME: We still get our NoInputs window with WM_NCHITTEST/HTTRANSPARENT code when decorated?
         io->MouseHoveredViewport = viewport->ID;
