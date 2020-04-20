@@ -1115,7 +1115,15 @@ _SOKOL_PRIVATE bool _simgui_is_ctrl(uint32_t modifiers) {
     }
 }
 
-_SOKOL_PRIVATE void simgui_handle_viewport_mouse(const sapp_event* ev) {
+_SOKOL_PRIVATE ImGuiViewport* _simgui_find_viewport_by_platformhandleraw(void* platform_handle_raw) {
+    ImGuiContext& g = *ImGui::GetCurrentContext();
+    for (int i = 0; i != g.Viewports.Size; i++)
+        if (g.Viewports[i]->PlatformHandleRaw == platform_handle_raw)
+            return g.Viewports[i];
+    return nullptr;
+};
+
+_SOKOL_PRIVATE void _simgui_handle_viewport_mouse(const sapp_event* ev) {
     const float dpi_scale = _simgui.desc.dpi_scale;
     #if defined(__cplusplus)
         ImGuiIO* io = &ImGui::GetIO();
@@ -1159,7 +1167,7 @@ _SOKOL_PRIVATE void simgui_handle_viewport_mouse(const sapp_event* ev) {
         
             // Multi-viewport mode: mouse position in OS absolute coordinates (io.MousePos is (0,0) when the mouse is on the upper-left of the primary monitor)
             // This is the position you can get with GetCursorPos(). In theory adding viewport->Pos is also the reverse operation of doing ScreenToClient().
-            if (ImGuiUX::FindViewportByPlatformHandleRaw((void*)(uintptr_t)(focused_hwnd)) != NULL)
+            if (_simgui_find_viewport_by_platformhandleraw((void*)(uintptr_t)(focused_hwnd)) != NULL)
                 io->MousePos = ImVec2(float(mouse_screen_pos.x/dpi_scale), float(mouse_screen_pos.y/dpi_scale));
         }
 
@@ -1170,7 +1178,7 @@ _SOKOL_PRIVATE void simgui_handle_viewport_mouse(const sapp_event* ev) {
         // If ImGuiBackendFlags_HasMouseHoveredViewport is not set by the back-end, imgui will ignore this field and infer the information by relying on the
         // rectangles and last focused time of every viewports it knows about. It will be unaware of foreign windows that may be sitting between or over your windows.
         if (HWND hovered_hwnd = ::WindowFromPoint(mouse_screen_pos))
-            if (ImGuiViewport* viewport = ImGuiUX::FindViewportByPlatformHandleRaw((void*)hovered_hwnd))
+            if (ImGuiViewport* viewport = _simgui_find_viewport_by_platformhandleraw((void*)hovered_hwnd))
                 if ((viewport->Flags & ImGuiViewportFlags_NoInputs) == 0) // FIXME: We still get our NoInputs window with WM_NCHITTEST/HTTRANSPARENT code when decorated?
                     io->MouseHoveredViewport = viewport->ID;
     }
@@ -1186,7 +1194,7 @@ SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
     _simgui_set_imgui_modifiers(io, ev->modifiers);
     switch (ev->type) {
         case SAPP_EVENTTYPE_MOUSE_DOWN:
-            simgui_handle_viewport_mouse(ev);
+            _simgui_handle_viewport_mouse(ev);
             //io->MousePos.x = ev->mouse_x / dpi_scale;
             //io->MousePos.y = ev->mouse_y / dpi_scale;
             if (ev->mouse_button < 3) {
@@ -1194,7 +1202,7 @@ SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
             }
             break;
         case SAPP_EVENTTYPE_MOUSE_UP:
-            simgui_handle_viewport_mouse(ev);
+            _simgui_handle_viewport_mouse(ev);
             //io->MousePos.x = ev->mouse_x / dpi_scale;
             //io->MousePos.y = ev->mouse_y / dpi_scale;
             if (ev->mouse_button < 3) {
@@ -1202,7 +1210,7 @@ SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
             }
             break;
         case SAPP_EVENTTYPE_MOUSE_MOVE:
-            simgui_handle_viewport_mouse(ev);
+            _simgui_handle_viewport_mouse(ev);
             //io->MousePos.x = ev->mouse_x / dpi_scale;
             //io->MousePos.y = ev->mouse_y / dpi_scale;
             break;
@@ -1220,18 +1228,18 @@ SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
             break;
         case SAPP_EVENTTYPE_TOUCHES_BEGAN:
             _simgui.btn_down[0] = true;
-            simgui_handle_viewport_mouse(ev);
+            _simgui_handle_viewport_mouse(ev);
             //io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
             //io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
             break;
         case SAPP_EVENTTYPE_TOUCHES_MOVED:
-            simgui_handle_viewport_mouse(ev);
+            _simgui_handle_viewport_mouse(ev);
             //io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
             //io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
             break;
         case SAPP_EVENTTYPE_TOUCHES_ENDED:
             _simgui.btn_up[0] = true;
-            simgui_handle_viewport_mouse(ev);
+            _simgui_handle_viewport_mouse(ev);
             //io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
             //io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
             break;
