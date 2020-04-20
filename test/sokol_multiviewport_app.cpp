@@ -1,6 +1,16 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
+#if IMGUI_VERSION_NUM < 17600
+#pragma message("warning: This test branch has only been tested with ImGui 1.76")
+#pragma message("warning: This test branch has only been tested with ImGui 1.76")
+#pragma message("warning: This test branch has only been tested with ImGui 1.76")
+#endif
+
+#if !(IMGUI_HAS_VIEWPORT && IMGUI_HAS_DOCK)
+#error You must be using the docking/viewport branch of imgui
+#endif
+
 #include <Windows.h>
 #ifndef SOKOL_LOG
 #define SOKOL_LOG(s) OutputDebugStringA(s)
