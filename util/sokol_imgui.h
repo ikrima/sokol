@@ -225,7 +225,7 @@ typedef struct simgui_desc_t {
 
 SOKOL_API_DECL void simgui_setup(const simgui_desc_t* desc);
 SOKOL_API_DECL void simgui_new_frame(int width, int height, double delta_time);
-SOKOL_API_DECL void simgui_render(void);
+SOKOL_API_DECL void simgui_render(ImDrawData* draw_data);
 #if !defined(SOKOL_IMGUI_NO_SOKOL_APP)
 SOKOL_API_DECL bool simgui_handle_event(const sapp_event* ev);
 #endif
@@ -281,7 +281,7 @@ SOKOL_API_DECL void simgui_shutdown(void);
 #define _simgui_def(val, def) (((val) == 0) ? (def) : (val))
 
 typedef struct {
-    ImVec2 disp_size;
+    ImVec4 disp_rect;
 } _simgui_vs_params_t;
 
 #define SIMGUI_MAX_KEY_VALUE (512)      // same as ImGuis IO.KeysDown array
@@ -392,7 +392,7 @@ static const char* _simgui_fs_src =
     Vertex shader source:
 
         cbuffer params {
-            float2 disp_size;
+            float4 disp_rect;
         };
         struct vs_in {
             float2 pos: POSITION;
@@ -406,7 +406,7 @@ static const char* _simgui_fs_src =
         };
         vs_out main(vs_in inp) {
             vs_out outp;
-            outp.pos = float4(((inp.pos/disp_size)-0.5)*float2(2.0,-2.0), 0.5, 1.0);
+            outp.pos = float4((((inp.pos-disp_rect.xy)/disp_rect.zw)-0.5)*float2(2.0,-2.0), 0.5, 1.0);
             outp.uv = inp.uv;
             outp.color = inp.color;
             return outp;
@@ -421,174 +421,180 @@ static const char* _simgui_fs_src =
         }
 */
 static const uint8_t _simgui_vs_bin[] = {
-     68,  88,  66,  67, 204, 137,
-    115, 177, 245,  67, 161, 195,
-     58, 224,  90,  35,  76, 123,
-     88, 146,   1,   0,   0,   0,
-    244,   3,   0,   0,   5,   0,
-      0,   0,  52,   0,   0,   0,
-     64,   1,   0,   0, 176,   1,
-      0,   0,  36,   2,   0,   0,
-     88,   3,   0,   0,  82,  68,
-     69,  70,   4,   1,   0,   0,
-      1,   0,   0,   0, 100,   0,
-      0,   0,   1,   0,   0,   0,
-     60,   0,   0,   0,   0,   5,
-    254, 255,   0, 145,   0,   0,
-    220,   0,   0,   0,  82,  68,
-     49,  49,  60,   0,   0,   0,
-     24,   0,   0,   0,  32,   0,
-      0,   0,  40,   0,   0,   0,
-     36,   0,   0,   0,  12,   0,
-      0,   0,   0,   0,   0,   0,
-     92,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      1,   0,   0,   0,   0,   0,
-      0,   0, 112,  97, 114,  97,
-    109, 115,   0, 171,  92,   0,
-      0,   0,   1,   0,   0,   0,
-    124,   0,   0,   0,  16,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0, 164,   0,
-      0,   0,   0,   0,   0,   0,
-      8,   0,   0,   0,   2,   0,
-      0,   0, 184,   0,   0,   0,
-      0,   0,   0,   0, 255, 255,
-    255, 255,   0,   0,   0,   0,
-    255, 255, 255, 255,   0,   0,
-      0,   0, 100, 105, 115, 112,
-     95, 115, 105, 122, 101,   0,
-    102, 108, 111,  97, 116,  50,
-      0, 171, 171, 171,   1,   0,
-      3,   0,   1,   0,   2,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-    174,   0,   0,   0,  77, 105,
-     99, 114, 111, 115, 111, 102,
-    116,  32,  40,  82,  41,  32,
-     72,  76,  83,  76,  32,  83,
-    104,  97, 100, 101, 114,  32,
-     67, 111, 109, 112, 105, 108,
-    101, 114,  32,  49,  48,  46,
-     49,   0,  73,  83,  71,  78,
-    104,   0,   0,   0,   3,   0,
-      0,   0,   8,   0,   0,   0,
-     80,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      3,   0,   0,   0,   0,   0,
-      0,   0,   3,   3,   0,   0,
-     89,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      3,   0,   0,   0,   1,   0,
-      0,   0,   3,   3,   0,   0,
-     98,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      3,   0,   0,   0,   2,   0,
-      0,   0,  15,  15,   0,   0,
-     80,  79,  83,  73,  84,  73,
-     79,  78,   0,  84,  69,  88,
-     67,  79,  79,  82,  68,   0,
-     67,  79,  76,  79,  82,   0,
-     79,  83,  71,  78, 108,   0,
-      0,   0,   3,   0,   0,   0,
-      8,   0,   0,   0,  80,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   3,   0,
-      0,   0,   0,   0,   0,   0,
-      3,  12,   0,   0,  89,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   3,   0,
-      0,   0,   1,   0,   0,   0,
-     15,   0,   0,   0,  95,   0,
-      0,   0,   0,   0,   0,   0,
-      1,   0,   0,   0,   3,   0,
-      0,   0,   2,   0,   0,   0,
-     15,   0,   0,   0,  84,  69,
-     88,  67,  79,  79,  82,  68,
-      0,  67,  79,  76,  79,  82,
-      0,  83,  86,  95,  80, 111,
-    115, 105, 116, 105, 111, 110,
-      0, 171,  83,  72,  69,  88,
-     44,   1,   0,   0,  80,   0,
-      1,   0,  75,   0,   0,   0,
-    106,   8,   0,   1,  89,   0,
-      0,   4,  70, 142,  32,   0,
-      0,   0,   0,   0,   1,   0,
-      0,   0,  95,   0,   0,   3,
-     50,  16,  16,   0,   0,   0,
-      0,   0,  95,   0,   0,   3,
-     50,  16,  16,   0,   1,   0,
-      0,   0,  95,   0,   0,   3,
-    242,  16,  16,   0,   2,   0,
-      0,   0, 101,   0,   0,   3,
-     50,  32,  16,   0,   0,   0,
-      0,   0, 101,   0,   0,   3,
-    242,  32,  16,   0,   1,   0,
-      0,   0, 103,   0,   0,   4,
-    242,  32,  16,   0,   2,   0,
-      0,   0,   1,   0,   0,   0,
-    104,   0,   0,   2,   1,   0,
-      0,   0,  54,   0,   0,   5,
-     50,  32,  16,   0,   0,   0,
-      0,   0,  70,  16,  16,   0,
-      1,   0,   0,   0,  54,   0,
-      0,   5, 242,  32,  16,   0,
-      1,   0,   0,   0,  70,  30,
-     16,   0,   2,   0,   0,   0,
-     14,   0,   0,   8,  50,   0,
-     16,   0,   0,   0,   0,   0,
-     70,  16,  16,   0,   0,   0,
-      0,   0,  70, 128,  32,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,  10,
-     50,   0,  16,   0,   0,   0,
-      0,   0,  70,   0,  16,   0,
-      0,   0,   0,   0,   2,  64,
-      0,   0,   0,   0,   0, 191,
-      0,   0,   0, 191,   0,   0,
-      0,   0,   0,   0,   0,   0,
-     56,   0,   0,  10,  50,  32,
-     16,   0,   2,   0,   0,   0,
-     70,   0,  16,   0,   0,   0,
-      0,   0,   2,  64,   0,   0,
-      0,   0,   0,  64,   0,   0,
-      0, 192,   0,   0,   0,   0,
-      0,   0,   0,   0,  54,   0,
-      0,   8, 194,  32,  16,   0,
-      2,   0,   0,   0,   2,  64,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,  63,   0,   0, 128,  63,
-     62,   0,   0,   1,  83,  84,
-     65,  84, 148,   0,   0,   0,
-      7,   0,   0,   0,   1,   0,
-      0,   0,   0,   0,   0,   0,
-      6,   0,   0,   0,   3,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   1,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   3,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,
+     68,  88,  66,  67,   6, 107, 
+    150,   7,  93,  19,  47, 140, 
+    168,  59,  49,  35,  36,  44, 
+     44, 237,   1,   0,   0,   0, 
+     24,   4,   0,   0,   5,   0, 
+      0,   0,  52,   0,   0,   0, 
+     64,   1,   0,   0, 176,   1, 
+      0,   0,  36,   2,   0,   0, 
+    124,   3,   0,   0,  82,  68, 
+     69,  70,   4,   1,   0,   0, 
+      1,   0,   0,   0, 100,   0, 
+      0,   0,   1,   0,   0,   0, 
+     60,   0,   0,   0,   0,   5, 
+    254, 255,   0, 145,   0,   0, 
+    220,   0,   0,   0,  82,  68, 
+     49,  49,  60,   0,   0,   0, 
+     24,   0,   0,   0,  32,   0, 
+      0,   0,  40,   0,   0,   0, 
+     36,   0,   0,   0,  12,   0, 
+      0,   0,   0,   0,   0,   0, 
+     92,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      1,   0,   0,   0,   0,   0, 
+      0,   0, 112,  97, 114,  97, 
+    109, 115,   0, 171,  92,   0, 
+      0,   0,   1,   0,   0,   0, 
+    124,   0,   0,   0,  16,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0, 164,   0, 
+      0,   0,   0,   0,   0,   0, 
+     16,   0,   0,   0,   2,   0, 
+      0,   0, 184,   0,   0,   0, 
+      0,   0,   0,   0, 255, 255, 
+    255, 255,   0,   0,   0,   0, 
+    255, 255, 255, 255,   0,   0, 
+      0,   0, 100, 105, 115, 112, 
+     95, 114, 101,  99, 116,   0, 
+    102, 108, 111,  97, 116,  52, 
+      0, 171, 171, 171,   1,   0, 
+      3,   0,   1,   0,   4,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+    174,   0,   0,   0,  77, 105, 
+     99, 114, 111, 115, 111, 102, 
+    116,  32,  40,  82,  41,  32, 
+     72,  76,  83,  76,  32,  83, 
+    104,  97, 100, 101, 114,  32, 
+     67, 111, 109, 112, 105, 108, 
+    101, 114,  32,  49,  48,  46, 
+     49,   0,  73,  83,  71,  78, 
+    104,   0,   0,   0,   3,   0, 
+      0,   0,   8,   0,   0,   0, 
+     80,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      3,   0,   0,   0,   0,   0, 
+      0,   0,   3,   3,   0,   0, 
+     89,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      3,   0,   0,   0,   1,   0, 
+      0,   0,   3,   3,   0,   0, 
+     98,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      3,   0,   0,   0,   2,   0, 
+      0,   0,  15,  15,   0,   0, 
+     80,  79,  83,  73,  84,  73, 
+     79,  78,   0,  84,  69,  88, 
+     67,  79,  79,  82,  68,   0, 
+     67,  79,  76,  79,  82,   0, 
+     79,  83,  71,  78, 108,   0, 
+      0,   0,   3,   0,   0,   0, 
+      8,   0,   0,   0,  80,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   3,   0, 
+      0,   0,   0,   0,   0,   0, 
+      3,  12,   0,   0,  89,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   3,   0, 
+      0,   0,   1,   0,   0,   0, 
+     15,   0,   0,   0,  95,   0, 
+      0,   0,   0,   0,   0,   0, 
+      1,   0,   0,   0,   3,   0, 
+      0,   0,   2,   0,   0,   0, 
+     15,   0,   0,   0,  84,  69, 
+     88,  67,  79,  79,  82,  68, 
+      0,  67,  79,  76,  79,  82, 
+      0,  83,  86,  95,  80, 111, 
+    115, 105, 116, 105, 111, 110, 
+      0, 171,  83,  72,  69,  88, 
+     80,   1,   0,   0,  80,   0, 
+      1,   0,  84,   0,   0,   0, 
+    106,   8,   0,   1,  89,   0, 
+      0,   4,  70, 142,  32,   0, 
+      0,   0,   0,   0,   1,   0, 
+      0,   0,  95,   0,   0,   3, 
+     50,  16,  16,   0,   0,   0, 
+      0,   0,  95,   0,   0,   3, 
+     50,  16,  16,   0,   1,   0, 
+      0,   0,  95,   0,   0,   3, 
+    242,  16,  16,   0,   2,   0, 
+      0,   0, 101,   0,   0,   3, 
+     50,  32,  16,   0,   0,   0, 
+      0,   0, 101,   0,   0,   3, 
+    242,  32,  16,   0,   1,   0, 
+      0,   0, 103,   0,   0,   4, 
+    242,  32,  16,   0,   2,   0, 
+      0,   0,   1,   0,   0,   0, 
+    104,   0,   0,   2,   1,   0, 
+      0,   0,  54,   0,   0,   5, 
+     50,  32,  16,   0,   0,   0, 
+      0,   0,  70,  16,  16,   0, 
+      1,   0,   0,   0,  54,   0, 
+      0,   5, 242,  32,  16,   0, 
+      1,   0,   0,   0,  70,  30, 
+     16,   0,   2,   0,   0,   0, 
+      0,   0,   0,   9,  50,   0, 
+     16,   0,   0,   0,   0,   0, 
+     70,  16,  16,   0,   0,   0, 
+      0,   0,  70, 128,  32, 128, 
+     65,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+     14,   0,   0,   8,  50,   0, 
+     16,   0,   0,   0,   0,   0, 
+     70,   0,  16,   0,   0,   0, 
+      0,   0, 230, 138,  32,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,  10, 
+     50,   0,  16,   0,   0,   0, 
+      0,   0,  70,   0,  16,   0, 
+      0,   0,   0,   0,   2,  64, 
+      0,   0,   0,   0,   0, 191, 
+      0,   0,   0, 191,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+     56,   0,   0,  10,  50,  32, 
+     16,   0,   2,   0,   0,   0, 
+     70,   0,  16,   0,   0,   0, 
+      0,   0,   2,  64,   0,   0, 
+      0,   0,   0,  64,   0,   0, 
+      0, 192,   0,   0,   0,   0, 
+      0,   0,   0,   0,  54,   0, 
+      0,   8, 194,  32,  16,   0, 
+      2,   0,   0,   0,   2,  64, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,  63,   0,   0, 128,  63, 
+     62,   0,   0,   1,  83,  84, 
+     65,  84, 148,   0,   0,   0, 
+      8,   0,   0,   0,   1,   0, 
+      0,   0,   0,   0,   0,   0, 
+      6,   0,   0,   0,   4,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   1,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   3,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0, 
       0,   0,   0,   0
 };
 static const uint8_t _simgui_fs_bin[] = {
@@ -858,8 +864,8 @@ SOKOL_API_IMPL void simgui_setup(const simgui_desc_t* desc) {
     memset(&shd_desc, 0, sizeof(shd_desc));
     sg_shader_uniform_block_desc* ub = &shd_desc.vs.uniform_blocks[0];
     ub->size = sizeof(_simgui_vs_params_t);
-    ub->uniforms[0].name = "disp_size";
-    ub->uniforms[0].type = SG_UNIFORMTYPE_FLOAT2;
+    ub->uniforms[0].name = "disp_rect";
+    ub->uniforms[0].type = SG_UNIFORMTYPE_FLOAT4;
     shd_desc.attrs[0].name = "position";
     shd_desc.attrs[0].sem_name = "POSITION";
     shd_desc.attrs[1].name = "texcoord0";
@@ -983,14 +989,14 @@ SOKOL_API_IMPL void simgui_new_frame(int width, int height, double delta_time) {
     #endif
 }
 
-SOKOL_API_IMPL void simgui_render(void) {
+SOKOL_API_IMPL void simgui_render(ImDrawData* draw_data) {
     #if defined(__cplusplus)
-            ImGui::Render();
-        ImDrawData* draw_data = ImGui::GetDrawData();
+        //ImGui::Render();
+        //ImDrawData* draw_data = ImGui::GetDrawData();
         ImGuiIO* io = &ImGui::GetIO();
     #else
-        igRender();
-        ImDrawData* draw_data = igGetDrawData();
+        //igRender();
+        //ImDrawData* draw_data = igGetDrawData();
         ImGuiIO* io = igGetIO();
     #endif
     if (0 == draw_data) {
@@ -1004,15 +1010,17 @@ SOKOL_API_IMPL void simgui_render(void) {
     sg_push_debug_group("sokol-imgui");
 
     const float dpi_scale = _simgui.desc.dpi_scale;
-    const int fb_width = (int) (io->DisplaySize.x * dpi_scale);
-    const int fb_height = (int) (io->DisplaySize.y * dpi_scale);
+    const int fb_width = (int) (draw_data->DisplaySize.x * dpi_scale);
+    const int fb_height = (int) (draw_data->DisplaySize.y * dpi_scale);
     sg_apply_viewport(0, 0, fb_width, fb_height, true);
     sg_apply_scissor_rect(0, 0, fb_width, fb_height, true);
 
     sg_apply_pipeline(_simgui.pip);
     _simgui_vs_params_t vs_params;
-    vs_params.disp_size.x = io->DisplaySize.x;
-    vs_params.disp_size.y = io->DisplaySize.y;
+    vs_params.disp_rect.x = draw_data->DisplayPos.x;
+    vs_params.disp_rect.y = draw_data->DisplayPos.y;
+    vs_params.disp_rect.z = draw_data->DisplaySize.x;
+    vs_params.disp_rect.w = draw_data->DisplaySize.y;
     sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &vs_params, sizeof(vs_params));
     sg_bindings bind;
     memset(&bind, 0, sizeof(bind));
@@ -1022,6 +1030,7 @@ SOKOL_API_IMPL void simgui_render(void) {
     bind.fs_images[0].id = (uint32_t)(uintptr_t)tex_id;
     uint32_t vb_offset = 0;
     uint32_t ib_offset = 0;
+    ImVec2 clip_offset = draw_data->DisplayPos;
     for (int cl_index = 0; cl_index < draw_data->CmdListsCount; cl_index++) {
         ImDrawList* cl = draw_data->CmdLists[cl_index];
 
@@ -1081,10 +1090,10 @@ SOKOL_API_IMPL void simgui_render(void) {
                     bind.vertex_buffer_offsets[0] = vb_offset + vtx_offset;
                     sg_apply_bindings(&bind);
                 }
-                const int scissor_x = (int) (pcmd->ClipRect.x * dpi_scale);
-                const int scissor_y = (int) (pcmd->ClipRect.y * dpi_scale);
-                const int scissor_w = (int) ((pcmd->ClipRect.z - pcmd->ClipRect.x) * dpi_scale);
-                const int scissor_h = (int) ((pcmd->ClipRect.w - pcmd->ClipRect.y) * dpi_scale);
+                const int scissor_x = (int) ((pcmd->ClipRect.x - clip_offset.x) * dpi_scale);
+                const int scissor_y = (int) ((pcmd->ClipRect.y - clip_offset.y) * dpi_scale);
+                const int scissor_w = (int) ((pcmd->ClipRect.z - clip_offset.x) * dpi_scale);
+                const int scissor_h = (int) ((pcmd->ClipRect.w - clip_offset.y) * dpi_scale);
                 sg_apply_scissor_rect(scissor_x, scissor_y, scissor_w, scissor_h, true);
                 sg_draw(base_element, pcmd->ElemCount, 1);
             }
@@ -1106,6 +1115,67 @@ _SOKOL_PRIVATE bool _simgui_is_ctrl(uint32_t modifiers) {
     }
 }
 
+_SOKOL_PRIVATE void simgui_handle_viewport_mouse(const sapp_event* ev) {
+    const float dpi_scale = _simgui.desc.dpi_scale;
+    #if defined(__cplusplus)
+        ImGuiIO* io = &ImGui::GetIO();
+    #else
+        ImGuiIO* io = igGetIO();
+    #endif
+
+    if ((io->ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0)
+    {
+        io->MousePos.x = ev->mouse_x / dpi_scale;
+        io->MousePos.y = ev->mouse_y / dpi_scale;
+    }
+    else
+    {
+        #if TEMPDISABLE
+        // Set OS mouse position if requested (rarely used, only when ImGuiConfigFlags_NavEnableSetMousePos is enabled by user)
+        // (When multi-viewports are enabled, all imgui positions are same as OS positions)
+        if (io.WantSetMousePos)
+        {
+        POINT pos = { (int)io.MousePos.x, (int)io.MousePos.y };
+        if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0)
+            ::ClientToScreen(g_hWnd, &pos);
+        ::SetCursorPos(pos.x, pos.y);
+        }
+        #endif
+
+        io->MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+        io->MouseHoveredViewport = 0;
+
+        // Set imgui mouse position
+        POINT mouse_screen_pos;
+      
+        if (!::GetCursorPos(&mouse_screen_pos))
+            return;
+
+        HWND mainHwnd = (HWND)sapp_win32_get_hwnd();
+        if (HWND focused_hwnd = ::GetForegroundWindow())
+        {
+            if (::IsChild(focused_hwnd, mainHwnd))
+                focused_hwnd = mainHwnd;
+        
+            // Multi-viewport mode: mouse position in OS absolute coordinates (io.MousePos is (0,0) when the mouse is on the upper-left of the primary monitor)
+            // This is the position you can get with GetCursorPos(). In theory adding viewport->Pos is also the reverse operation of doing ScreenToClient().
+            if (ImGuiUX::FindViewportByPlatformHandleRaw((void*)(uintptr_t)(focused_hwnd)) != NULL)
+                io->MousePos = ImVec2(float(mouse_screen_pos.x/dpi_scale), float(mouse_screen_pos.y/dpi_scale));
+        }
+
+        // (Optional) When using multiple viewports: set io.MouseHoveredViewport to the viewport the OS mouse cursor is hovering.
+        // Important: this information is not easy to provide and many high-level windowing library won't be able to provide it correctly, because
+        // - This is _ignoring_ viewports with the ImGuiViewportFlags_NoInputs flag (pass-through windows).
+        // - This is _regardless_ of whether another viewport is focused or being dragged from.
+        // If ImGuiBackendFlags_HasMouseHoveredViewport is not set by the back-end, imgui will ignore this field and infer the information by relying on the
+        // rectangles and last focused time of every viewports it knows about. It will be unaware of foreign windows that may be sitting between or over your windows.
+        if (HWND hovered_hwnd = ::WindowFromPoint(mouse_screen_pos))
+            if (ImGuiViewport* viewport = ImGuiUX::FindViewportByPlatformHandleRaw((void*)hovered_hwnd))
+                if ((viewport->Flags & ImGuiViewportFlags_NoInputs) == 0) // FIXME: We still get our NoInputs window with WM_NCHITTEST/HTTRANSPARENT code when decorated?
+                    io->MouseHoveredViewport = viewport->ID;
+    }
+}
+  
 SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
     const float dpi_scale = _simgui.desc.dpi_scale;
     #if defined(__cplusplus)
@@ -1116,22 +1186,25 @@ SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
     _simgui_set_imgui_modifiers(io, ev->modifiers);
     switch (ev->type) {
         case SAPP_EVENTTYPE_MOUSE_DOWN:
-            io->MousePos.x = ev->mouse_x / dpi_scale;
-            io->MousePos.y = ev->mouse_y / dpi_scale;
+            simgui_handle_viewport_mouse(ev);
+            //io->MousePos.x = ev->mouse_x / dpi_scale;
+            //io->MousePos.y = ev->mouse_y / dpi_scale;
             if (ev->mouse_button < 3) {
                 _simgui.btn_down[ev->mouse_button] = true;
             }
             break;
         case SAPP_EVENTTYPE_MOUSE_UP:
-            io->MousePos.x = ev->mouse_x / dpi_scale;
-            io->MousePos.y = ev->mouse_y / dpi_scale;
+            simgui_handle_viewport_mouse(ev);
+            //io->MousePos.x = ev->mouse_x / dpi_scale;
+            //io->MousePos.y = ev->mouse_y / dpi_scale;
             if (ev->mouse_button < 3) {
                 _simgui.btn_up[ev->mouse_button] = true;
             }
             break;
         case SAPP_EVENTTYPE_MOUSE_MOVE:
-            io->MousePos.x = ev->mouse_x / dpi_scale;
-            io->MousePos.y = ev->mouse_y / dpi_scale;
+            simgui_handle_viewport_mouse(ev);
+            //io->MousePos.x = ev->mouse_x / dpi_scale;
+            //io->MousePos.y = ev->mouse_y / dpi_scale;
             break;
         case SAPP_EVENTTYPE_MOUSE_ENTER:
         case SAPP_EVENTTYPE_MOUSE_LEAVE:
@@ -1147,17 +1220,20 @@ SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
             break;
         case SAPP_EVENTTYPE_TOUCHES_BEGAN:
             _simgui.btn_down[0] = true;
-            io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
-            io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
+            simgui_handle_viewport_mouse(ev);
+            //io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
+            //io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
             break;
         case SAPP_EVENTTYPE_TOUCHES_MOVED:
-            io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
-            io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
+            simgui_handle_viewport_mouse(ev);
+            //io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
+            //io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
             break;
         case SAPP_EVENTTYPE_TOUCHES_ENDED:
             _simgui.btn_up[0] = true;
-            io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
-            io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
+            simgui_handle_viewport_mouse(ev);
+            //io->MousePos.x = ev->touches[0].pos_x / dpi_scale;
+            //io->MousePos.y = ev->touches[0].pos_y / dpi_scale;
             break;
         case SAPP_EVENTTYPE_TOUCHES_CANCELLED:
             _simgui.btn_up[0] = _simgui.btn_down[0] = false;
