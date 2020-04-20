@@ -11129,13 +11129,13 @@ SOKOL_API_IMPL sg_context sg_setup(const sg_desc* desc) {
     _sg.frame_index = 1;
     _sg_setup_backend(&_sg.desc);
     _sg.valid = true;
-    return sg_setup_context(&(sg_context_desc) {
+    return sg_setup_context(&(sg_context_desc{
         .mtl_renderpass_descriptor_cb = _sg.desc.mtl_renderpass_descriptor_cb,
         .mtl_drawable_cb = _sg.desc.mtl_drawable_cb,
         .d3d11_render_target_view_cb = _sg.desc.d3d11_render_target_view_cb,
         .d3d11_depth_stencil_view_cb = _sg.desc.d3d11_depth_stencil_view_cb,
         .context_userdata = _sg.desc.context_userdata
-    });
+    }));
 }
 
 SOKOL_API_IMPL void sg_shutdown(void) {
