@@ -1138,7 +1138,7 @@ _SOKOL_PRIVATE void _simgui_handle_viewport_mouse(const sapp_event* ev) {
     }
     else
     {
-        #if TEMPDISABLE
+        #if TEMPENABLE
         // Set OS mouse position if requested (rarely used, only when ImGuiConfigFlags_NavEnableSetMousePos is enabled by user)
         // (When multi-viewports are enabled, all imgui positions are same as OS positions)
         if (io.WantSetMousePos)

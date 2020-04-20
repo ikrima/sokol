@@ -92,7 +92,7 @@ static void update_mouse_pos()
   const float dpi_scale = _simgui.desc.dpi_scale;
   ImGuiIO*    io        = &ImGui::GetIO();
 
-#if TEMPDISABLE
+#if TEMPENABLE
   // Set OS mouse position if requested (rarely used, only when ImGuiConfigFlags_NavEnableSetMousePos is enabled by user)
   // (When multi-viewports are enabled, all imgui positions are same as OS positions)
   if (io.WantSetMousePos) {
