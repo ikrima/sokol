@@ -22,7 +22,7 @@
 #define SOKOL_GFX_IMGUI_IMPL
 #include "util/sokol_gfx_imgui.h"
 
-static bool     show_quit_dialog = false;
+static bool       show_quit_dialog = false;
 static sg_context main_sg_ctx;
 static sg_imgui_t sg_imgui;
 
@@ -41,9 +41,11 @@ void smv_apphost_init()
     .mtl_drawable_cb              = sapp_metal_get_drawable,
     .d3d11_device                 = sapp_d3d11_get_device(),
     .d3d11_device_context         = sapp_d3d11_get_device_context(),
-    .d3d11_render_target_view_cb = [] { return sapp_d3d11_get_render_target_view_window(sapp_window{.id = (uint32_t)(uintptr_t)sg_active_context_userdata()}); },
-    .d3d11_depth_stencil_view_cb = [] { return sapp_d3d11_get_depth_stencil_view_window(sapp_window{.id = (uint32_t)(uintptr_t)sg_active_context_userdata()}); },
-    .context_userdata = (void*)(uintptr_t)sapp_main_window().id,
+    .d3d11_render_target_view_cb =
+      [] { return sapp_d3d11_get_render_target_view_window(sapp_window{.id = (uint32_t)(uintptr_t) sg_active_context_userdata()}); },
+    .d3d11_depth_stencil_view_cb =
+      [] { return sapp_d3d11_get_depth_stencil_view_window(sapp_window{.id = (uint32_t)(uintptr_t) sg_active_context_userdata()}); },
+    .context_userdata = (void*) (uintptr_t) sapp_main_window().id,
   }));
   stm_setup();
 
@@ -57,59 +59,55 @@ void smv_apphost_init()
   {
     ImGuiIO& io = ImGui::GetIO();
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;    // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;      // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_DpiEnableScaleFonts;    // FIXME-DPI: THIS CURRENTLY DOESN'T WORK AS EXPECTED. DON'T USE IN USER APP!
     io.ConfigFlags |= ImGuiConfigFlags_DpiEnableScaleViewports;    // FIXME-DPI
     io.ConfigWindowsMoveFromTitleBarOnly = false;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;    // Enable Docking
     io.ConfigDockingWithShift = false;
-    io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;            // We can honor GetMouseCursor() values (optional)
-    io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;             // We can honor io.WantSetMousePos requests (optional, rarely used)
+    io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;    // We can honor GetMouseCursor() values (optional)
+    io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;     // We can honor io.WantSetMousePos requests (optional, rarely used)
     io.BackendPlatformName = "sokol-app";
     // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
-    ImGuiStyle& style = ImGui::GetStyle();
-      style.WindowRounding = 0.0f;
-      style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-
+    ImGuiStyle& style                 = ImGui::GetStyle();
+    style.WindowRounding              = 0.0f;
+    style.Colors[ImGuiCol_WindowBg].w = 1.0f;
   }
 
   smv_appviewport_init();
 }
 
-static void update_mouse_pos() {
+static void update_mouse_pos()
+{
   const float dpi_scale = _simgui.desc.dpi_scale;
-  ImGuiIO* io = &ImGui::GetIO();
+  ImGuiIO*    io        = &ImGui::GetIO();
 
 #if TEMPDISABLE
   // Set OS mouse position if requested (rarely used, only when ImGuiConfigFlags_NavEnableSetMousePos is enabled by user)
   // (When multi-viewports are enabled, all imgui positions are same as OS positions)
-  if (io.WantSetMousePos)
-  {
-    POINT pos = { (int)io.MousePos.x, (int)io.MousePos.y };
-    if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0)
-      ::ClientToScreen(g_hWnd, &pos);
+  if (io.WantSetMousePos) {
+    POINT pos = {(int) io.MousePos.x, (int) io.MousePos.y};
+    if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0) ::ClientToScreen(g_hWnd, &pos);
     ::SetCursorPos(pos.x, pos.y);
   }
 #endif
 
-  io->MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+  io->MousePos             = ImVec2(-FLT_MAX, -FLT_MAX);
   io->MouseHoveredViewport = 0;
 
   // Set imgui mouse position
   POINT mouse_screen_pos;
 
-  if (!::GetCursorPos(&mouse_screen_pos))
-    return;
+  if (!::GetCursorPos(&mouse_screen_pos)) return;
 
-  HWND mainHwnd = (HWND)sapp_win32_get_hwnd();
-  if (HWND focused_hwnd = ::GetForegroundWindow())
-  {
-    if (::IsChild(focused_hwnd, mainHwnd))
-      focused_hwnd = mainHwnd;
+  HWND mainHwnd = (HWND) sapp_win32_get_hwnd();
+  if (HWND focused_hwnd = ::GetForegroundWindow()) {
+    if (::IsChild(focused_hwnd, mainHwnd)) focused_hwnd = mainHwnd;
 
-    // Multi-viewport mode: mouse position in OS absolute coordinates (io.MousePos is (0,0) when the mouse is on the upper-left of the primary monitor)
-    // This is the position you can get with GetCursorPos(). In theory adding viewport->Pos is also the reverse operation of doing ScreenToClient().
-    if (_simgui_find_viewport_by_platformhandleraw((void*)(uintptr_t)(focused_hwnd)) != NULL)
+    // Multi-viewport mode: mouse position in OS absolute coordinates (io.MousePos is (0,0) when the mouse is on the upper-left of the
+    // primary monitor) This is the position you can get with GetCursorPos(). In theory adding viewport->Pos is also the reverse operation
+    // of doing ScreenToClient().
+    if (_simgui_find_viewport_by_platformhandleraw((void*) (uintptr_t)(focused_hwnd)) != NULL)
       io->MousePos = ImVec2(float(mouse_screen_pos.x / dpi_scale), float(mouse_screen_pos.y / dpi_scale));
   }
 
@@ -117,22 +115,23 @@ static void update_mouse_pos() {
   // Important: this information is not easy to provide and many high-level windowing library won't be able to provide it correctly, because
   // - This is _ignoring_ viewports with the ImGuiViewportFlags_NoInputs flag (pass-through windows).
   // - This is _regardless_ of whether another viewport is focused or being dragged from.
-  // If ImGuiBackendFlags_HasMouseHoveredViewport is not set by the back-end, imgui will ignore this field and infer the information by relying on the
-  // rectangles and last focused time of every viewports it knows about. It will be unaware of foreign windows that may be sitting between or over your windows.
+  // If ImGuiBackendFlags_HasMouseHoveredViewport is not set by the back-end, imgui will ignore this field and infer the information by
+  // relying on the rectangles and last focused time of every viewports it knows about. It will be unaware of foreign windows that may be
+  // sitting between or over your windows.
   if (HWND hovered_hwnd = ::WindowFromPoint(mouse_screen_pos))
-    if (ImGuiViewport* viewport = _simgui_find_viewport_by_platformhandleraw((void*)hovered_hwnd))
-      if ((viewport->Flags & ImGuiViewportFlags_NoInputs) == 0) // FIXME: We still get our NoInputs window with WM_NCHITTEST/HTTRANSPARENT code when decorated?
+    if (ImGuiViewport* viewport = _simgui_find_viewport_by_platformhandleraw((void*) hovered_hwnd))
+      if ((viewport->Flags & ImGuiViewportFlags_NoInputs)
+          == 0)    // FIXME: We still get our NoInputs window with WM_NCHITTEST/HTTRANSPARENT code when decorated?
         io->MouseHoveredViewport = viewport->ID;
-
 }
 
 void smv_apphost_tick()
 {
   static uint64_t last_time = 0;
 
-  const int  main_width      = sapp_width();
-  const int  main_height     = sapp_height();
-  const double delta_time = stm_sec(stm_laptime(&last_time));
+  const int    main_width  = sapp_width();
+  const int    main_height = sapp_height();
+  const double delta_time  = stm_sec(stm_laptime(&last_time));
 
   smv_appviewport_updatemonitors();
   update_mouse_pos();
@@ -157,11 +156,11 @@ void smv_apphost_tick()
   }
 
 
-  
-static ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_None;
-static bool               bShowAppMetrics = false;
-static bool               bShowDemoWindow = false;
-static bool               bShowStyleEditor = false;
+
+  static ImGuiDockNodeFlags dockspaceFlags   = ImGuiDockNodeFlags_None;
+  static bool               bShowAppMetrics  = false;
+  static bool               bShowDemoWindow  = false;
+  static bool               bShowStyleEditor = false;
   {
     // Create MainWindowHost that everything will dock to
     constexpr bool opt_fullscreen = true;
@@ -286,7 +285,6 @@ static bool               bShowStyleEditor = false;
   }
 
   smv_appviewport_draw();
-
 }
 
 void smv_apphost_shutdown()
@@ -416,9 +414,11 @@ void smv_appviewport_init()
     ImGuiSokolViewportData* data    = IM_NEW(ImGuiSokolViewportData)();
     data->w                         = sapp_create_window(&(sapp_window_desc{.window_title = "sokol: not main window"}));
     data->c                         = sg_setup_context(&(sg_context_desc{
-      .d3d11_render_target_view_cb = [] { return sapp_d3d11_get_render_target_view_window(sapp_window{.id = (uint32_t)(uintptr_t)sg_active_context_userdata()}); },
-      .d3d11_depth_stencil_view_cb = [] { return sapp_d3d11_get_depth_stencil_view_window(sapp_window{.id = (uint32_t)(uintptr_t)sg_active_context_userdata()}); },
-      .context_userdata            = (void*) (uintptr_t) data->w.id,
+      .d3d11_render_target_view_cb =
+        [] { return sapp_d3d11_get_render_target_view_window(sapp_window{.id = (uint32_t)(uintptr_t) sg_active_context_userdata()}); },
+      .d3d11_depth_stencil_view_cb =
+        [] { return sapp_d3d11_get_depth_stencil_view_window(sapp_window{.id = (uint32_t)(uintptr_t) sg_active_context_userdata()}); },
+      .context_userdata = (void*) (uintptr_t) data->w.id,
     }));
     viewport->PlatformUserData      = data;
     viewport->PlatformRequestResize = false;
@@ -591,5 +591,4 @@ void smv_appviewport_draw()
     sg_end_pass();
     sg_commit();
   }
-
 }
