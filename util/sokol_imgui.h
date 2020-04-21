@@ -1087,10 +1087,10 @@ SOKOL_API_IMPL void simgui_render(ImDrawData* draw_data) {
                     bind.vertex_buffer_offsets[0] = vb_offset + vtx_offset;
                     sg_apply_bindings(&bind);
                 }
-                const int scissor_x = (int) ((pcmd->ClipRect.x - clip_offset.x) * dpi_scale);
-                const int scissor_y = (int) ((pcmd->ClipRect.y - clip_offset.y) * dpi_scale);
-                const int scissor_w = (int) ((pcmd->ClipRect.z - clip_offset.x) * dpi_scale);
-                const int scissor_h = (int) ((pcmd->ClipRect.w - clip_offset.y) * dpi_scale);
+                const int scissor_x = (int) ((pcmd->ClipRect.x - clip_offset.x   ) * dpi_scale);
+                const int scissor_y = (int) ((pcmd->ClipRect.y - clip_offset.y   ) * dpi_scale);
+                const int scissor_w = (int) ((pcmd->ClipRect.z - pcmd->ClipRect.x) * dpi_scale);
+                const int scissor_h = (int) ((pcmd->ClipRect.w - pcmd->ClipRect.y) * dpi_scale);
                 sg_apply_scissor_rect(scissor_x, scissor_y, scissor_w, scissor_h, true);
                 sg_draw(base_element, pcmd->ElemCount, 1);
             }
