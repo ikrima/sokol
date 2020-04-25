@@ -1035,8 +1035,8 @@ SOKOL_API_IMPL void simgui_render(ImDrawData* draw_data) {
         #if defined(__cplusplus)
             const int vtx_size = cl->VtxBuffer.size() * sizeof(ImDrawVert);
             const int idx_size = cl->IdxBuffer.size() * sizeof(ImDrawIdx);
-            const ImDrawVert* vtx_ptr = &cl->VtxBuffer.front();
-            const ImDrawIdx* idx_ptr = &cl->IdxBuffer.front();
+            const ImDrawVert* vtx_ptr = cl->VtxBuffer.size() ? &cl->VtxBuffer.front() : nullptr;
+            const ImDrawIdx* idx_ptr  = cl->IdxBuffer.size() ? &cl->IdxBuffer.front() : nullptr;
         #else
             const int vtx_size = cl->VtxBuffer.Size * sizeof(ImDrawVert);
             const int idx_size = cl->IdxBuffer.Size * sizeof(ImDrawIdx);
