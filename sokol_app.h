@@ -807,7 +807,7 @@ typedef struct sapp_desc {
     int width;                          /* the preferred width of the window / canvas */
     int height;                         /* the preferred height of the window / canvas */
     int sample_count;                   /* MSAA sample count */
-    int swap_interval;                  /* the preferred swap interval (ignored on some platforms) */
+    int swap_interval;                  /* the preferred swap interval (ignored on some platforms). -1 => disable vsync */
     bool high_dpi;                      /* whether the rendering canvas is full-resolution on HighDPI displays */
     bool fullscreen;                    /* whether the window should be created in fullscreen mode */
     bool alpha;                         /* whether the framebuffer should have an alpha channel (ignored on some platforms) */
@@ -1084,7 +1084,7 @@ _SOKOL_PRIVATE sapp_window_desc _sapp_window_desc_defaults(const sapp_window_des
     def.width = _sapp_def(desc->width, 640);
     def.height = _sapp_def(desc->height, 640);
     def.sample_count = _sapp_def(desc->sample_count, 1);
-    def.swap_interval = _sapp_def(desc->swap_interval, 1);
+    def.swap_interval = (desc->swap_interval<0) ? 0 : _sapp_def(desc->swap_interval, 1);
     return def;
 }
 
@@ -1318,7 +1318,7 @@ _SOKOL_PRIVATE void _sapp_init_state(const sapp_desc* desc) {
     _sapp.framebuffer_width = _sapp.window_width;
     _sapp.framebuffer_height = _sapp.window_height;
     _sapp.sample_count = _sapp_def(_sapp.desc.sample_count, 1);
-    _sapp.swap_interval = _sapp_def(_sapp.desc.swap_interval, 1);
+    _sapp.swap_interval = (_sapp.desc.swap_interval<0) ? 0 : _sapp_def(_sapp.desc.swap_interval, 1);
     _sapp.html5_canvas_name = _sapp_def(_sapp.desc.html5_canvas_name, "canvas");
     _sapp.html5_ask_leave_site = _sapp.desc.html5_ask_leave_site;
     _sapp.clipboard_enabled = _sapp.desc.enable_clipboard;
