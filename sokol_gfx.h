@@ -6639,6 +6639,7 @@ _SOKOL_PRIVATE void _sg_d3d11_init_caps(void) {
         DXGI_FORMAT dxgi_fmt = _sg_d3d11_pixel_format((sg_pixel_format)fmt);
         HRESULT hr = ID3D11Device_CheckFormatSupport(_sg.d3d11.dev, dxgi_fmt, &dxgi_fmt_caps);
         SOKOL_ASSERT(SUCCEEDED(hr));
+        _SOKOL_UNUSED(hr);
         sg_pixelformat_info* info = &_sg.formats[fmt];
         info->sample = 0 != (dxgi_fmt_caps & D3D11_FORMAT_SUPPORT_TEXTURE2D);
         info->filter = 0 != (dxgi_fmt_caps & D3D11_FORMAT_SUPPORT_SHADER_SAMPLE);
@@ -7316,6 +7317,7 @@ _SOKOL_PRIVATE sg_resource_state _sg_d3d11_create_pass(_sg_pass_t* pass, _sg_ima
     for (int i = 0; i < pass->cmn.num_color_atts; i++) {
         const sg_attachment_desc* att_desc = &desc->color_attachments[i];
         SOKOL_ASSERT(att_desc->image.id != SG_INVALID_ID);
+        _SOKOL_UNUSED(att_desc);
         _sg_image_t* att_img = att_images[i];
         SOKOL_ASSERT(att_img && (att_img->slot.id == att_desc->image.id));
         SOKOL_ASSERT(_sg_is_valid_rendertarget_color_format(att_img->cmn.pixel_format));
@@ -7372,6 +7374,7 @@ _SOKOL_PRIVATE sg_resource_state _sg_d3d11_create_pass(_sg_pass_t* pass, _sg_ima
         SOKOL_ASSERT(att_img && (att_img->slot.id == att_desc->image.id));
         SOKOL_ASSERT(_sg_is_valid_rendertarget_depth_format(att_img->cmn.pixel_format));
         SOKOL_ASSERT(0 == pass->d3d11.ds_att.image);
+        _SOKOL_UNUSED(att_desc);
         pass->d3d11.ds_att.image = att_img;
 
         /* create D3D11 depth-stencil-view */

@@ -4001,6 +4001,7 @@ _SOKOL_PRIVATE void _sapp_d3d11_create_swapchain(HWND hwnd, int framebuffer_widt
     sc_desc->BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     HRESULT hr = _sapp_dxgi_factory->lpVtbl->CreateSwapChain(_sapp_dxgi_factory, (IUnknown*)_sapp_d3d11_device, sc_desc, &resources->swap_chain);
     SOKOL_ASSERT(SUCCEEDED(hr));
+    _SOKOL_UNUSED(hr);
 }
 
 _SOKOL_PRIVATE void _sapp_d3d11_destroy_device(ID3D11DeviceContext** device_context, ID3D11Device** d3d11device) {
