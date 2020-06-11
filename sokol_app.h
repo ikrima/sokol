@@ -5026,6 +5026,7 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
         #if defined(SOKOL_GLCORE33)
             _sapp_wgl_swap_buffers();
         #endif
+        SOKOL_FRAMEMARK;
         /* check for window resized, this cannot happen in WM_SIZE as it explodes memory usage */
         _sapp_window_iterator iter = { 0 };
 
