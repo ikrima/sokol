@@ -835,6 +835,7 @@ SOKOL_API_DECL bool sapp_isvalid(void);
 /* returns handle to main window that is always created on initialization */
 SOKOL_API_DECL sapp_window sapp_main_window(void);
 SOKOL_API_DECL sapp_window sapp_create_window(const sapp_window_desc *desc);
+SOKOL_API_DECL int sapp_window_index(sapp_window window);
 SOKOL_API_DECL bool sapp_valid_window(sapp_window window); /* naming ?. keeper ? */
 SOKOL_API_DECL int sapp_destroy_window(sapp_window window);
 
@@ -7745,6 +7746,11 @@ SOKOL_API_DECL sapp_window sapp_create_window(const sapp_window_desc *desc) {
     sapp_window r = { 0 };
     return r;
 #endif
+}
+
+
+SOKOL_API_DECL int sapp_window_index(sapp_window window) {
+    return window.id & 0x7fffffff;
 }
 
 SOKOL_API_DECL bool sapp_valid_window(sapp_window window) {
