@@ -1164,10 +1164,10 @@ typedef struct {
 } _sapp_state;
 static _sapp_state _sapp;
 
-typedef struct { int idx, count; } _sapp_window_iterator;
+typedef struct { int idx, count, max; } _sapp_window_iterator;
 
 _SOKOL_PRIVATE _sapp_window* _sapp_windows_next(_sapp_window_iterator* iter) {
-    if (iter->count == _sapp.windows.size) {
+    if (iter->count == iter->max) {
         return 0;
     }
     else {
@@ -5012,7 +5012,7 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
         }
         _sapp_frame();
         #if defined(SOKOL_D3D11)
-            _sapp_window_iterator present_iter = { 0 };
+            _sapp_window_iterator present_iter = { 0, 0, _sapp.windows.size };
             window = _sapp_windows_next(&present_iter);
             while (window) {
                 _sapp_win32_window *win32_win = _sapp_window_platform_data(_sapp_win32_window *, window);
@@ -5029,7 +5029,7 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
         #endif
         SOKOL_FRAMEMARK;
         /* check for window resized, this cannot happen in WM_SIZE as it explodes memory usage */
-        _sapp_window_iterator iter = { 0 };
+        _sapp_window_iterator iter = { 0, 0, _sapp.windows.size };
 
         window = _sapp_windows_next(&iter);
         while (window) {
@@ -5057,7 +5057,7 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
     }
     _sapp_call_cleanup();
 
-    _sapp_window_iterator destroy_iter = { 0 };
+    _sapp_window_iterator destroy_iter = { 0, 0, _sapp.windows.size };
     window = _sapp_windows_next(&destroy_iter);
     while (window) {
         _sapp_win32_destroy_window(window->handle);
