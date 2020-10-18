@@ -4967,17 +4967,20 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
         _sapp_d3d11_create_device();
     #endif
 
-    _sapp_win32_create_window(&(sapp_window_desc{
-        .width = _sapp.desc.width,
-        .height = _sapp.desc.height,
-        .sample_count = _sapp.desc.sample_count,
-        .swap_interval = _sapp.desc.swap_interval,
-        .high_dpi = _sapp.desc.high_dpi,
-        .fullscreen = _sapp.desc.fullscreen,
-        .alpha = _sapp.desc.alpha,
-        .window_title = _sapp.desc.window_title,
-        .user_cursor = _sapp.desc.user_cursor
-    }));
+    {
+        sapp_window_desc sapp_wndw_desc{
+            .width = _sapp.desc.width,
+            .height = _sapp.desc.height,
+            .sample_count = _sapp.desc.sample_count,
+            .swap_interval = _sapp.desc.swap_interval,
+            .high_dpi = _sapp.desc.high_dpi,
+            .fullscreen = _sapp.desc.fullscreen,
+            .alpha = _sapp.desc.alpha,
+            .window_title = _sapp.desc.window_title,
+            .user_cursor = _sapp.desc.user_cursor
+        };
+        _sapp_win32_create_window(&sapp_wndw_desc);
+    }
 
     {
         _sapp_window* mw = _sapp_lookup_window(sapp_main_window());
