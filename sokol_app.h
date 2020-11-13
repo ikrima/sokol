@@ -4547,8 +4547,8 @@ _SOKOL_PRIVATE void _sapp_win32_scroll_event(sapp_window handle, float x, float 
     if (_sapp_events_enabled()) {
         _sapp_init_event(handle, SAPP_EVENTTYPE_MOUSE_SCROLL);
         _sapp.event.modifiers = _sapp_win32_mods();
-        _sapp.event.scroll_x = -x / 30.0f;
-        _sapp.event.scroll_y = y / 30.0f;
+        _sapp.event.scroll_x = -x / (float)WHEEL_DELTA;
+        _sapp.event.scroll_y = y / (float)WHEEL_DELTA;
         _sapp_call_event(&_sapp.event);
     }
 }
