@@ -1,9 +1,9 @@
 # Imgui aware Multi-window/viewport Implementation
 Video: https://twitter.com/ikrimae/status/1252194400681127936
 
-* Integrated with ImGui 1.76's docking branch
-* Updated/fixed from @jrincredible proof of concept
-* Windows & DX11 
+* Integrated with ImGui 1.79's docking branch
+* Based of @jrincredible proof of concept
+* Windows & DX11
 * Hasitly put together (aka hacky shortcuts abound); will cleanup possibly
 
 ---
