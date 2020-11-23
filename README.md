@@ -16,7 +16,7 @@ Simple
 [STB-style](https://github.com/nothings/stb/blob/master/docs/stb_howto.txt)
 cross-platform libraries for C and C++, written in C.
 
-[See what's new](#updates) (**13-Jul-2020**: ObjC ARC is now optional, plus internal cleanup
+[See what's new](#updates) (**22-Jul-2020 PSA**: warning about cmake 3.18 breakage)
 
 [Live Samples](https://floooh.github.io/sokol-html5/index.html) via WASM.
 
@@ -470,11 +470,34 @@ Mainly some "missing features" for desktop apps:
 
 # Updates
 
+- **22-Jul-2020**: **PLEASE NOTE** cmake 3.18 breaks some of sokol samples when
+  compiling with the Visual Studio toolchain because some C files now actually
+  compile as C++ for some reason (see:
+  https://twitter.com/FlohOfWoe/status/1285996526117040128).  Until this is
+  fixed, or I have come up with a workaround, please use an older cmake version
+  to build the sokol samples with the Visual Studio compiler.
+
+  (Update: I have added a workaround to fips: https://github.com/floooh/fips/commit/89997b8ebdca6fc9455a5cfe6145eecaa017df49
+  which fixes the issue at least for fips projects)
+
+- **14-Jul-2020**:
+    - sapp_mouse_shown() has been implemented for macOS (thanks to @slmjkdbtl for
+      providing the initial PR!)
+    - On macOS, the lower-level functions CGDisplayShowCursor and CGDisplayHideCursor
+      are now used instead of the NSCursor class. This is in preparation for the
+      'pointer lock' feature which will also use CGDisplay* functions.
+    - Calling ```sapp_show_mouse(bool visible)``` no longer 'stacks' (e.g. there's
+      no 'hidden counter' underneath anymore, instead calling ```sapp_show_mouse(true)```
+      will always show the cursor and ```sapp_show_mouse(false)``` will always
+      hide it. This is a different behaviour than the underlying Win32 and
+      macOS functions ShowCursor() and CGDisplaShow/HideCursor()
+    - The mouse show/hide behaviour can now be tested in the ```events-sapp``` sample
+      (so far this only works on Windows and macOS).
+
 - **13-Jul-2020**:
     - On macOS and iOS, sokol_app.h and sokol_gfx.h can now be compiled with
       ARC (Automatic Reference Counting) **disabled** (previously ARC had to be
-      enabled). I will generally switch to testing with ARC disabled from now
-      on.
+      enabled).
     - Compiling with ARC enabled is still supported but with a little caveat:
       if you're compiling sokol_app.h or sokol_gfx.h in ObjC mode (not ObjC++
       mode) *AND* ARC is enabled, then the Xcode version must be more recent
@@ -483,34 +506,30 @@ Mainly some "missing features" for desktop apps:
       find this mentioned in any Xcode release notes though). Compiling with
       ARC disabled should also work on older Xcode versions though.
     - Various internal code cleanup things:
-        - The remaining 'top-level' static ObjC id variables in the sokol_gfx.h
-        Metal backend have been moved into the global static state structure
-        (that's the reason why __has_feature(objc_arc_fields) is required now
-        when compiling with ARC)
         - sokol_app.h had the same 'structural cleanup' as sokol_gfx.h in
-        January, all internal data has been merged into a single big
-        state structure, backend specific data has been moved closer to
-        each other in the header, and backend-specific structures and functions
-        have been named more consistently for better 'searchability'
-        - The 'mini GL' loader in the sokol_app.h Win32+WGL backend has
-        been rewritten to use X-Macros which killed a lot of redundant and
-        error-prone lines of code
+          January, all internal state (including ObjC id's) has been merged into
+          a single big state structure. Backend specific struct declarations
+          have been moved closer together in the header, and
+          backend-specific structures and functions have been named more
+          consistently for better 'searchability'
+        - The 'mini GL' loader in the sokol_app.h Win32+WGL backend has been
+          rewritten to use X-Macros (less redundant lines of code)
         - All macOS and iOS code has been revised and cleaned up
-        - On macOS a workaround for a (what looks like) post-Catalina NSOpenGLView
-        issue has been added: if the sokol_app.h window doesn't fit on
-        screen (and was thus 'clamped' by Cocoa) *AND* the content-size was
-        not set to native Retina resolution, the initial content size was
-        reported as if it was in Retina resolution. This caused an empty screen
-        to be rendered in the imgui-sapp demo. The workaround is to hook into
-        the NSOpenGLView reshape event at which point the reported content
-        size is correct.
-        - On macOS and iOS, the various 'view delegate' objects have been removed,
-        and rendering happens instead in the subclasses of MTKView, GLKView
-        and NSOpenGLView.
+        - On macOS a workaround for a (what looks like) post-Catalina
+          NSOpenGLView issue has been added: if the sokol_app.h window doesn't
+          fit on screen (and was thus 'clamped' by Cocoa) *AND* the
+          content-size was not set to native Retina resolution, the initial
+          content size was reported as if it was in Retina resolution. This
+          caused an empty screen to be rendered in the imgui-sapp demo. The
+          workaround is to hook into the NSOpenGLView reshape event at which
+          point the reported content size is correct.
+        - On macOS and iOS, the various 'view delegate' objects have been
+          removed, and rendering happens instead in the subclasses of MTKView,
+          GLKView and NSOpenGLView.
         - On macOS and iOS, there's now proper cleanup code in the
-        applicationWillTerminate callback (although note that on iOS this function isn't
-        guaranteed to be called, because an application can also simply be
-        killed by the operating system.
+          applicationWillTerminate callback (although note that on iOS this
+          function isn't guaranteed to be called, because an application can
+          also simply be killed by the operating system.
 
 - **22-Jun-2020**: The X11/GLX backend in sokol_app.h now has (soft-)fullscreen
 support, bringing the feature on par with Windows and macOS. Many thanks to
