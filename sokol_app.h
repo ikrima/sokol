@@ -218,16 +218,17 @@
         int sapp_height(void)
             Likewise, returns the current height of the default framebuffer.
 
-        sapp_pixel_format sapp_color_format(void)
-        sapp_pixel_format sapp_depth_format(void)
+        int sapp_color_format(void)
+        int sapp_depth_format(void)
             The color and depth-stencil pixelformats of the default framebuffer,
-            as enum values which are compatible with sokol-gfx's
-            sg_pixel_format enum:
+            as int values which are compatible with sokol-gfx's
+            sg_pixel_format enum, so they can be plugged directly in places
+            where sg_pixel_format is expected:
 
-                SAPP_PIXELFORMAT_RGBA8 == 23 == SG_PIXELFORMAT_RGBA8
-                SAPP_PIXELFORMAT_BGRA8 == 27 == SG_PIXELFORMAT_BGRA8
-                SAPP_PIXELFORMAT_DEPTH == 41 == SG_PIXELFORMAT_DEPTH
-                SAPP_PIXELFORMAT_DEPTH_STENCIL == 42 == SG_PIXELFORMAT_DEPTH_STENCIL
+                23 == SG_PIXELFORMAT_RGBA8
+                27 == SG_PIXELFORMAT_BGRA8
+                41 == SG_PIXELFORMAT_DEPTH
+                42 == SG_PIXELFORMAT_DEPTH_STENCIL
 
         int sapp_sample_count(void)
             Return the MSAA sample count of the default framebuffer.
@@ -621,14 +622,6 @@ enum {
     SAPP_MAX_KEYCODES = 512,
 };
 
-/* NOTE: the pixel format values *must* be compatible with sg_pixel_format */
-typedef enum sapp_pixel_format {
-    SAPP_PIXELFORMAT_RGBA8 = 23,
-    SAPP_PIXELFORMAT_BGRA8 = 27,
-    SAPP_PIXELFORMAT_DEPTH = 41,
-    SAPP_PIXELFORMAT_DEPTH_STENCIL = 42
-} sapp_pixel_format;
-
 typedef enum sapp_event_type {
     SAPP_EVENTTYPE_INVALID,
     SAPP_EVENTTYPE_KEY_DOWN,
@@ -944,9 +937,9 @@ SOKOL_API_DECL int sapp_window_width(sapp_window window);
 /* returns the window's framebuffer height in pixels */
 SOKOL_API_DECL int sapp_window_height(sapp_window window);
 /* get default framebuffer color pixel format */
-SOKOL_API_DECL sapp_pixel_format sapp_color_format(void);
+SOKOL_API_DECL int sapp_color_format(void);
 /* get default framebuffer depth pixel format */
-SOKOL_API_DECL sapp_pixel_format sapp_depth_format(void);
+SOKOL_API_DECL int sapp_depth_format(void);
 /* get default framebuffer sample count */
 SOKOL_API_DECL int sapp_sample_count(void);
 /* returns true when high_dpi was requested and actually running in a high-dpi scenario */
@@ -1028,6 +1021,10 @@ SOKOL_API_DECL const void* sapp_android_get_native_activity(void);
 
 #ifdef __cplusplus
 } /* extern "C" */
+
+/* reference-based equivalents for C++ */
+inline int sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
+
 #endif
 #endif // SOKOL_APP_INCLUDED
 
@@ -1148,9 +1145,12 @@ SOKOL_API_DECL const void* sapp_android_get_native_activity(void);
 #define _sapp_absf(a) (((a)<0.0f)?-(a):(a))
 #define _sapp_pointer_add(type, p, num_bytes) (type)((unsigned char*)(p)+num_bytes)
 
-enum {
-    _SAPP_MAX_TITLE_LENGTH = 128,
-};
+#define _SAPP_MAX_TITLE_LENGTH (128)
+/* NOTE: the pixel format values *must* be compatible with sg_pixel_format */
+#define _SAPP_PIXELFORMAT_RGBA8 (23)
+#define _SAPP_PIXELFORMAT_BGRA8 (27)
+#define _SAPP_PIXELFORMAT_DEPTH (41)
+#define _SAPP_PIXELFORMAT_DEPTH_STENCIL (42)
 
 _SOKOL_PRIVATE sapp_window_desc _sapp_window_desc_defaults(const sapp_window_desc *desc) {
     sapp_window_desc def = *desc;
@@ -8120,26 +8120,26 @@ SOKOL_API_IMPL int sapp_width(void) {
     return sapp_window_width(sapp_main_window());
 }
 
-SOKOL_API_IMPL sapp_pixel_format sapp_color_format(void) {
+SOKOL_API_IMPL int sapp_color_format(void) {
     #if defined(SOKOL_WGPU)
         switch (_sapp_emsc.wgpu.render_format) {
             case WGPUTextureFormat_RGBA8Unorm:
-                return SAPP_PIXELFORMAT_RGBA8;
+                return _SAPP_PIXELFORMAT_RGBA8;
             case WGPUTextureFormat_BGRA8Unorm:
-                return SAPP_PIXELFORMAT_BGRA8;
+                return _SAPP_PIXELFORMAT_BGRA8;
             default:
                 SOKOL_UNREACHABLE;
                 return 0;
         }
     #elif defined(SOKOL_METAL) || defined(SOKOL_D3D11)
-        return SAPP_PIXELFORMAT_BGRA8;
+        return _SAPP_PIXELFORMAT_BGRA8;
     #else
-        return SAPP_PIXELFORMAT_RGBA8;
+        return _SAPP_PIXELFORMAT_RGBA8;
     #endif
 }
 
-SOKOL_API_IMPL sapp_pixel_format sapp_depth_format(void) {
-    return SAPP_PIXELFORMAT_DEPTH_STENCIL;
+SOKOL_API_IMPL int sapp_depth_format(void) {
+    return _SAPP_PIXELFORMAT_DEPTH_STENCIL;
 }
 
 SOKOL_API_IMPL int sapp_sample_count(void) {
