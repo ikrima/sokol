@@ -3643,7 +3643,7 @@ static bool _sapp_arb_multisample;
 static bool _sapp_arb_pixel_format;
 static bool _sapp_arb_create_context;
 static bool _sapp_arb_create_context_profile;
-static HWND _sapp_win32_msg_hwnd;
+static HWND _sapp_win32_hwnd;
 static HDC _sapp_win32_msg_dc;
 
 /* NOTE: the optional GL loader only contains the GL constants and functions required for sokol_gfx.h, if you need
@@ -4420,7 +4420,7 @@ _SOKOL_PRIVATE void _sapp_wgl_init(void) {
     _sapp_wglMakeCurrent = (PFN_wglMakeCurrent) GetProcAddress(_sapp_opengl32, "wglMakeCurrent");
     SOKOL_ASSERT(_sapp_wglMakeCurrent);
 
-    _sapp_win32_msg_hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW,
+    _sapp_win32_hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW,
         L"SOKOLAPP",
         L"sokol-app message window",
         WS_CLIPSIBLINGS|WS_CLIPCHILDREN,
@@ -4428,24 +4428,24 @@ _SOKOL_PRIVATE void _sapp_wgl_init(void) {
         NULL, NULL,
         GetModuleHandleW(NULL),
         NULL);
-    if (!_sapp_win32_msg_hwnd) {
+    if (!_sapp_win32_hwnd) {
         _sapp_fail("Win32: failed to create helper window!\n");
     }
-    ShowWindow(_sapp_win32_msg_hwnd, SW_HIDE);
+    ShowWindow(_sapp_win32_hwnd, SW_HIDE);
     MSG msg;
-    while (PeekMessageW(&msg, _sapp_win32_msg_hwnd, 0, 0, PM_REMOVE)) {
+    while (PeekMessageW(&msg, _sapp_win32_hwnd, 0, 0, PM_REMOVE)) {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
-    _sapp_win32_msg_dc = GetDC(_sapp_win32_msg_hwnd);
+    _sapp_win32_msg_dc = GetDC(_sapp_win32_hwnd);
     if (!_sapp_win32_msg_dc) {
         _sapp_fail("Win32: failed to obtain helper window DC!\n");
     }
 }
 
 _SOKOL_PRIVATE void _sapp_wgl_shutdown(void) {
-    SOKOL_ASSERT(_sapp_opengl32 && _sapp_win32_msg_hwnd);
-    DestroyWindow(_sapp_win32_msg_hwnd); _sapp_win32_msg_hwnd = 0;
+    SOKOL_ASSERT(_sapp_opengl32 && _sapp_win32_hwnd);
+    DestroyWindow(_sapp_win32_hwnd); _sapp_win32_hwnd = 0;
     FreeLibrary(_sapp_opengl32); _sapp_opengl32 = 0;
 }
 
@@ -4677,9 +4677,11 @@ _SOKOL_PRIVATE bool _sapp_win32_wide_to_utf8(const wchar_t* src, char* dst, int 
     return 0 != WideCharToMultiByte(CP_UTF8, 0, src, -1, dst, dst_num_bytes, NULL, NULL);
 }
 
-_SOKOL_PRIVATE void _sapp_win32_toggle_fullscreen() {
-    HMONITOR monitor = MonitorFromWindow(_sapp_win32_msg_hwnd, MONITOR_DEFAULTTONEAREST);
-    MONITORINFO minfo = { .cbSize = sizeof(MONITORINFO) };
+_SOKOL_PRIVATE void _sapp_win32_toggle_fullscreen(void) {
+    HMONITOR monitor = MonitorFromWindow(_sapp_win32_hwnd, MONITOR_DEFAULTTONEAREST);
+    MONITORINFO minfo;
+    memset(&minfo, 0, sizeof(minfo));
+    minfo.cbSize = sizeof(MONITORINFO);
     GetMonitorInfo(monitor, &minfo);
     const RECT mr = minfo.rcMonitor;
     const int monitor_w = mr.right - mr.left;
@@ -4708,8 +4710,8 @@ _SOKOL_PRIVATE void _sapp_win32_toggle_fullscreen() {
         rect.top = (monitor_h - win_height) / 2;
     }
 
-    SetWindowLongPtr(_sapp_win32_msg_hwnd, GWL_STYLE, win_style);
-    SetWindowPos(_sapp_win32_msg_hwnd, HWND_TOP, mr.left + rect.left, mr.top + rect.top, win_width, win_height, SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+    SetWindowLongPtr(_sapp_win32_hwnd, GWL_STYLE, win_style);
+    SetWindowPos(_sapp_win32_hwnd, HWND_TOP, mr.left + rect.left, mr.top + rect.top, win_width, win_height, SWP_SHOWWINDOW | SWP_FRAMECHANGED);
 }
 
 _SOKOL_PRIVATE void _sapp_win32_show_mouse(bool shown) {
@@ -8247,8 +8249,6 @@ SOKOL_API_DECL bool sapp_is_fullscreen(void) {
 SOKOL_API_DECL void sapp_toggle_fullscreen(void) {
     #if defined(_WIN32)
     _sapp_win32_toggle_fullscreen();
-    #else
-    _SOKOL_UNUSED(shown);
     #endif
 }
 
