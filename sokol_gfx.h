@@ -385,6 +385,25 @@
         The provided semantic information will be used later in sg_create_pipeline()
         to match the vertex layout to vertex shader inputs.
 
+    --- on D3D11, and when passing HLSL source code (instead of byte code) to shader
+        creation, you can optionally define the shader model targets on the vertex
+        stage:
+
+            sg_shader_Desc desc = {
+                .vs = {
+                    ...
+                    .d3d11_target = "vs_5_0"
+                },
+                .fs = {
+                    ...
+                    .d3d11_target = "ps_5_0"
+                }
+            };
+
+        The default targets are "ps_4_0" and "fs_4_0". Note that those target names
+        are only used when compiling shaders from source. They are ignored when
+        creating a shader from bytecode.
+
     --- on Metal, GL 3.3 or GLES3/WebGL2, you don't need to provide an attribute
         name or semantic name, since vertex attributes can be bound by their slot index
         (this is mandatory in Metal, and optional in GL):
@@ -1623,6 +1642,7 @@ typedef struct sg_image_desc {
     - for each vertex- and fragment-shader-stage:
         - the shader source or bytecode
         - an optional entry function name
+        - an optional compile target (only for D3D11 when source is provided, defaults are "vs_4_0" and "ps_4_0")
         - reflection info for each uniform block used by the shader stage:
             - the size of the uniform block in bytes
             - reflection info for each uniform block member (only required for GL backends):
@@ -1638,7 +1658,10 @@ typedef struct sg_image_desc {
     either shader source-code or byte-code can be provided.
 
     For D3D11, if source code is provided, the d3dcompiler_47.dll will be loaded
-    on demand. If this fails, shader creation will fail.
+    on demand. If this fails, shader creation will fail. When compiling HLSL
+    source code, you can provide an optional target string via
+    sg_shader_stage_desc.d3d11_target, the default target is "vs_4_0" for the
+    vertex shader stage and "ps_4_0" for the pixel shader stage.
 */
 typedef struct sg_shader_attr_desc {
     const char* name;           /* GLSL vertex attribute name (only required for GLES2) */
@@ -1668,6 +1691,7 @@ typedef struct sg_shader_stage_desc {
     const uint8_t* byte_code;
     int byte_code_size;
     const char* entry;
+    const char* d3d11_target;
     sg_shader_uniform_block_desc uniform_blocks[SG_MAX_SHADERSTAGE_UBS];
     sg_shader_image_desc images[SG_MAX_SHADERSTAGE_IMAGES];
 } sg_shader_stage_desc;
@@ -3293,12 +3317,12 @@ typedef struct {
 
 /* keep Objective-C 'smart data' in a separate static objects, these can't be in a C struct until Xcode10 or so */
 static NSMutableArray* _sg_mtl_idpool;
+static dispatch_semaphore_t _sg_mtl_sem;
 static id<MTLDevice> _sg_mtl_device;
 static id<MTLCommandQueue> _sg_mtl_cmd_queue;
 static id<MTLCommandBuffer> _sg_mtl_cmd_buffer;
-static id<MTLBuffer> _sg_mtl_uniform_buffers[SG_NUM_INFLIGHT_FRAMES];
 static id<MTLRenderCommandEncoder> _sg_mtl_cmd_encoder;
-static dispatch_semaphore_t _sg_mtl_sem;
+static id<MTLBuffer> _sg_mtl_uniform_buffers[SG_NUM_INFLIGHT_FRAMES];
 
 /*=== WGPU BACKEND DECLARATIONS ==============================================*/
 #elif defined(SOKOL_WGPU)
@@ -7051,13 +7075,16 @@ _SOKOL_PRIVATE void _sg_d3d11_init_caps(void) {
     _sg.limits.max_vertex_attrs = SG_MAX_VERTEX_ATTRIBUTES;
 
     /* see: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_format_support */
-    UINT dxgi_fmt_caps = 0;
     for (int fmt = (SG_PIXELFORMAT_NONE+1); fmt < _SG_PIXELFORMAT_NUM; fmt++) {
-        DXGI_FORMAT dxgi_fmt = _sg_d3d11_pixel_format((sg_pixel_format)fmt);
-        HRESULT hr = ID3D11Device_CheckFormatSupport(_sg.d3d11.dev, dxgi_fmt, &dxgi_fmt_caps);
-        _SOKOL_UNUSED(hr);
-        SOKOL_ASSERT(SUCCEEDED(hr));
-        _SOKOL_UNUSED(hr);
+        UINT dxgi_fmt_caps = 0;
+        const DXGI_FORMAT dxgi_fmt = _sg_d3d11_pixel_format((sg_pixel_format)fmt);
+        if (dxgi_fmt != DXGI_FORMAT_UNKNOWN) {
+            HRESULT hr = ID3D11Device_CheckFormatSupport(_sg.d3d11.dev, dxgi_fmt, &dxgi_fmt_caps);
+            SOKOL_ASSERT(SUCCEEDED(hr) || (E_FAIL == hr));
+            if (!SUCCEEDED(hr)) {
+                dxgi_fmt_caps = 0;
+            }
+        }
         sg_pixelformat_info* info = &_sg.formats[fmt];
         info->sample = 0 != (dxgi_fmt_caps & D3D11_FORMAT_SUPPORT_TEXTURE2D);
         info->filter = 0 != (dxgi_fmt_caps & D3D11_FORMAT_SUPPORT_SHADER_SAMPLE);
@@ -7460,10 +7487,11 @@ _SOKOL_PRIVATE bool _sg_d3d11_load_d3dcompiler_dll(void) {
 #define _sg_d3d11_D3DCompile _sg.d3d11.D3DCompile_func
 #endif
 
-_SOKOL_PRIVATE ID3DBlob* _sg_d3d11_compile_shader(const sg_shader_stage_desc* stage_desc, const char* target) {
+_SOKOL_PRIVATE ID3DBlob* _sg_d3d11_compile_shader(const sg_shader_stage_desc* stage_desc) {
     if (!_sg_d3d11_load_d3dcompiler_dll()) {
         return NULL;
     }
+    SOKOL_ASSERT(stage_desc->d3d11_target);
     ID3DBlob* output = NULL;
     ID3DBlob* errors_or_warnings = NULL;
     HRESULT hr = _sg_d3d11_D3DCompile(
@@ -7473,7 +7501,7 @@ _SOKOL_PRIVATE ID3DBlob* _sg_d3d11_compile_shader(const sg_shader_stage_desc* st
         NULL,                           /* pDefines */
         NULL,                           /* pInclude */
         stage_desc->entry ? stage_desc->entry : "main",     /* pEntryPoint */
-        target,     /* pTarget (vs_5_0 or ps_5_0) */
+        stage_desc->d3d11_target,       /* pTarget (vs_5_0 or ps_5_0) */
         D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_OPTIMIZATION_LEVEL3,   /* Flags1 */
         0,          /* Flags2 */
         &output,    /* ppCode */
@@ -7539,8 +7567,8 @@ _SOKOL_PRIVATE sg_resource_state _sg_d3d11_create_shader(_sg_shader_t* shd, cons
     }
     else {
         /* compile from shader source code */
-        vs_blob = _sg_d3d11_compile_shader(&desc->vs, "vs_5_0");
-        fs_blob = _sg_d3d11_compile_shader(&desc->fs, "ps_5_0");
+        vs_blob = _sg_d3d11_compile_shader(&desc->vs);
+        fs_blob = _sg_d3d11_compile_shader(&desc->fs);
         if (vs_blob && fs_blob) {
             vs_ptr = ID3D10Blob_GetBufferPointer(vs_blob);
             vs_length = ID3D10Blob_GetBufferSize(vs_blob);
@@ -8850,17 +8878,23 @@ _SOKOL_PRIVATE void _sg_mtl_discard_backend(void) {
     for (int i = 0; i < SG_NUM_INFLIGHT_FRAMES; i++) {
         dispatch_semaphore_wait(_sg_mtl_sem, DISPATCH_TIME_FOREVER);
     }
+    /* semaphore must be "relinquished" before destruction */
+    for (int i = 0; i < SG_NUM_INFLIGHT_FRAMES; i++) {
+        dispatch_semaphore_signal(_sg_mtl_sem);
+    }
     _sg_mtl_destroy_sampler_cache(_sg.mtl.frame_index);
     _sg_mtl_garbage_collect(_sg.mtl.frame_index + SG_NUM_INFLIGHT_FRAMES + 2);
     _sg_mtl_destroy_pool();
     _sg.mtl.valid = false;
-    _sg_mtl_cmd_encoder = nil;
-    _sg_mtl_cmd_buffer = nil;
+
+    _sg_mtl_sem = nil;
+    _sg_mtl_device = nil;
     _sg_mtl_cmd_queue = nil;
+    _sg_mtl_cmd_buffer = nil;
+    _sg_mtl_cmd_encoder = nil;
     for (int i = 0; i < SG_NUM_INFLIGHT_FRAMES; i++) {
         _sg_mtl_uniform_buffers[i] = nil;
     }
-    _sg_mtl_device = nil;
 }
 
 _SOKOL_PRIVATE void _sg_mtl_reset_state_cache(void) {
@@ -13079,6 +13113,14 @@ _SOKOL_PRIVATE sg_shader_desc _sg_shader_desc_defaults(const sg_shader_desc* des
     #else
         def.vs.entry = _sg_def(def.vs.entry, "main");
         def.fs.entry = _sg_def(def.fs.entry, "main");
+    #endif
+    #if defined(SOKOL_D3D11)
+        if (def.vs.source) {
+            def.vs.d3d11_target = _sg_def(def.vs.d3d11_target, "vs_4_0");
+        }
+        if (def.fs.source) {
+            def.fs.d3d11_target = _sg_def(def.fs.d3d11_target, "ps_4_0");
+        }
     #endif
     for (int stage_index = 0; stage_index < SG_NUM_SHADER_STAGES; stage_index++) {
         sg_shader_stage_desc* stage_desc = (stage_index == SG_SHADERSTAGE_VS)? &def.vs : &def.fs;
