@@ -16,7 +16,7 @@ Simple
 [STB-style](https://github.com/nothings/stb/blob/master/docs/stb_howto.txt)
 cross-platform libraries for C and C++, written in C.
 
-[See what's new](#updates) (**22-Sep-2020** sokol_app.h: new UWP backend)
+[See what's new](#updates) (**10-Oct-2020** sokol_app.h win32/uwp: D3D11/DXGI swapchain code modernization)
 
 [Live Samples](https://floooh.github.io/sokol-html5/index.html) via WASM.
 
@@ -441,6 +441,45 @@ See the sokol_args.h header for a more complete documentation, and the [Tiny
 Emulators](https://floooh.github.io/tiny8bit/) for more interesting usage examples.
 
 # Updates
+
+- **10-Oct-2020**: Improvements to the sokol_app.h Win32+D3D11 and UWP+D3D11 swapchain code:
+  - In the Win32+D3D11 backend and when running on Win10,
+    ```DXGI_SWAP_EFFECT_FLIP_DISCARD``` is now used.  This gets rid of a
+    deprecation warning in the debugger console and also should allow slightly
+    more efficient swaps in some situations. When running on Win7 or Win8, the
+    traditional ```DXGI_SWAP_EFFECT_DISCARD``` is used.
+  - The UWP backend now supports MSAA multisampling (the required fixes for
+    this are the same as in the Win32 backend with the new swap effect: a
+    separate MSAA texture and render-target-view is created where
+    rendering goes into, and this MSAA texture is resolved into the actual
+    swapchain surface before presentation).
+
+- **07-Oct-2020**:
+    A fix in the ALSA/Linux backend initialization in sokol_audio.h: Previously,
+    initialization would fail if ALSA can't allocate the exact requested
+    buffer size. Instead sokol_audio.h let's now pick ALSA a suitable buffer
+    size. Also better log messages in the ALSA initialization code if something
+    goes wrong. Unfortunately I'm not able to reproduce the buffer allocation
+    problem on my Linux machine. Details are in this issue: https://github.com/floooh/sokol/issues/400
+
+    **NARRATOR**: the fix didn't work.
+
+- **02-Oct-2020**:
+    The sokol_app.h Win32 backend can now render while moving and resizing
+    the window. NOTE that resizing the swapchain buffers (and receiving
+    SAPP_EVENTTYPE_RESIZED events) is deferred until the resizing finished.
+    Resizing the swapchain buffers each frame created a substantial temporary
+    memory spike of up to several hundred MBytes. I need to figure out a better
+    swapchain resizing strategy.
+
+- **30-Sep-2020**:
+    sokol_audio.h now works on UWP, thanks again to Alberto Fustinoni
+    (@albertofustinoni) for the PR!
+
+- **26-Sep-2020**:
+    sokol_app.h gained a new function sapp_set_window_title() to change
+    the window title on Windows, macOS and Linux. Many thanks to
+    @medvednikov for the initial PR!
 
 - **23-Sep-2020**:
     sokol_app.h now has initial UWP support using the C++/WinRT set of APIs.

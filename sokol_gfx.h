@@ -2541,12 +2541,13 @@ inline void sg_init_pass(sg_pass pass_id, const sg_pass_desc& desc) { return sg_
     #include <d3dcompiler.h>
     #ifdef _MSC_VER
     #if (defined(WINAPI_FAMILY_PARTITION) && !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP))
-    #pragma comment (lib, "WindowsApp.lib")
+        #pragma comment (lib, "WindowsApp.lib")
     #else
-    #pragma comment (lib, "user32.lib")
-    #pragma comment (lib, "dxgi.lib")
-    #pragma comment (lib, "d3d11.lib")
-    #pragma comment (lib, "dxguid.lib")
+        #pragma comment (lib, "kernel32.lib")
+        #pragma comment (lib, "user32.lib")
+        #pragma comment (lib, "dxgi.lib")
+        #pragma comment (lib, "d3d11.lib")
+        #pragma comment (lib, "dxguid.lib")
     #endif
     #endif
 #elif defined(SOKOL_METAL)
@@ -14591,6 +14592,7 @@ SOKOL_API_IMPL void sg_apply_uniforms(sg_shader_stage stage, int ub_index, const
 
 SOKOL_API_IMPL void sg_draw(int base_element, int num_elements, int num_instances) {
     SOKOL_ASSERT(_sg.valid);
+    SOKOL_ASSERT((base_element >= 0) && (num_elements >= 0) && (num_instances >= 0));
     #if defined(SOKOL_DEBUG)
         if (!_sg.bindings_valid) {
             SOKOL_LOG("attempting to draw without resource bindings");
@@ -14606,6 +14608,13 @@ SOKOL_API_IMPL void sg_draw(int base_element, int num_elements, int num_instance
     }
     if (!_sg.bindings_valid) {
         _SG_TRACE_NOARGS(err_bindings_invalid);
+        return;
+    }
+    /* attempting to draw with zero elements or instances is not technically an
+       error, but might be handled as an error in the backend API (e.g. on Metal)
+    */
+    if ((0 == num_elements) || (0 == num_instances)) {
+        _SG_TRACE_NOARGS(err_draw_invalid);
         return;
     }
     _sg_draw(base_element, num_elements, num_instances);
