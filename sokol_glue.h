@@ -87,6 +87,7 @@ extern "C" {
 
 #if defined(SOKOL_GFX_INCLUDED) && defined(SOKOL_APP_INCLUDED)
 SOKOL_API_DECL sg_context_desc sapp_sgcontext(void);
+SOKOL_API_DECL sg_context_desc sapp_sgcontext_window(sapp_window window);
 #endif
 
 #ifdef __cplusplus
@@ -126,6 +127,22 @@ SOKOL_API_IMPL sg_context_desc sapp_sgcontext(void) {
     desc.wgpu.render_view_cb = sapp_wgpu_get_render_view;
     desc.wgpu.resolve_view_cb = sapp_wgpu_get_resolve_view;
     desc.wgpu.depth_stencil_view_cb = sapp_wgpu_get_depth_stencil_view;
+    return desc;
+}
+
+_SOKOL_PRIVATE const void* _sapp_d3d11_get_render_target_view_window_cb() {
+    return sapp_d3d11_get_render_target_view_window(sapp_window{ .id = (uint32_t)(uintptr_t)sg_active_context_userdata() });
+}
+
+_SOKOL_PRIVATE const void* _sapp_d3d11_get_depth_stencil_view_window_cb() {
+    return sapp_d3d11_get_depth_stencil_view_window(sapp_window{ .id = (uint32_t)(uintptr_t)sg_active_context_userdata() });
+}
+
+SOKOL_API_IMPL sg_context_desc sapp_sgcontext_window(sapp_window window) {
+    sg_context_desc desc = sapp_sgcontext();
+    desc.d3d11.render_target_view_cb = _sapp_d3d11_get_render_target_view_window_cb;
+    desc.d3d11.depth_stencil_view_cb = _sapp_d3d11_get_depth_stencil_view_window_cb;
+    desc.context_userdata = (void*)(uintptr_t)window.id;
     return desc;
 }
 #endif

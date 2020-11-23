@@ -4214,8 +4214,8 @@ _SOKOL_PRIVATE void _sapp_d3d11_create_device(void) {
 #else
     hr = CreateDXGIFactory(&IID_IDXGIFactory, (void**)&_sapp_dxgi_factory);
 #endif
-
-    SOKOL_ASSERT(SUCCEEDED(hr));
+    _SOKOL_UNUSED(hr);
+    SOKOL_ASSERT(SUCCEEDED(hr) && _sapp_d3d11_device && _sapp_d3d11_device_context);
 }
 
 _SOKOL_PRIVATE void _sapp_d3d11_create_swapchain(HWND hwnd, int framebuffer_width, int framebuffer_height, int sample_count, _sokol_d3d11_default_window_resources* resources) {
@@ -4223,6 +4223,7 @@ _SOKOL_PRIVATE void _sapp_d3d11_create_swapchain(HWND hwnd, int framebuffer_widt
     sc_desc->BufferDesc.Width = framebuffer_width;
     sc_desc->BufferDesc.Height = framebuffer_height;
     sc_desc->BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    //TODO: ikrimae: #sokol: Fix monitor refresh rate setting & sleeping
     sc_desc->BufferDesc.RefreshRate.Numerator = 60;
     sc_desc->BufferDesc.RefreshRate.Denominator = 1;
     sc_desc->OutputWindow = hwnd;
@@ -4233,8 +4234,8 @@ _SOKOL_PRIVATE void _sapp_d3d11_create_swapchain(HWND hwnd, int framebuffer_widt
     sc_desc->SampleDesc.Quality = sample_count > 1 ? D3D11_STANDARD_MULTISAMPLE_PATTERN : 0;
     sc_desc->BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     HRESULT hr = _sapp_dxgi_factory->lpVtbl->CreateSwapChain(_sapp_dxgi_factory, (IUnknown*)_sapp_d3d11_device, sc_desc, &resources->swap_chain);
-    SOKOL_ASSERT(SUCCEEDED(hr));
     _SOKOL_UNUSED(hr);
+    SOKOL_ASSERT(SUCCEEDED(hr) && resources->swap_chain);
 }
 
 _SOKOL_PRIVATE void _sapp_d3d11_destroy_device(ID3D11DeviceContext** device_context, ID3D11Device** d3d11device) {
@@ -5254,6 +5255,7 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
                 IDXGISwapChain_Present(win32_win->d3d11_resources.swap_chain, _sapp.swap_interval, 0); /* FIXME */
 
                 if (window->handle.id == main_handle.id && IsIconic(win32_win->hwnd)) {
+                    //TODO: ikrimae: #sokol: Fix monitor refresh rate setting & sleeping
                     Sleep(16 * _sapp.swap_interval);
                 }
                 window = _sapp_windows_next(&present_iter);
