@@ -2059,6 +2059,15 @@ void _sapp_macos_set_clipboard_string(const char* str) {
     }
 }
 
+void _sapp_macos_show_mouse(bool shown) {
+    if (shown) {
+        [NSCursor unhide];
+    }
+    else {
+        [NSCursor hide];
+    }
+}
+
 const char* _sapp_macos_get_clipboard_string(void) {
     SOKOL_ASSERT(_sapp.clipboard);
     @autoreleasepool {
@@ -3462,6 +3471,24 @@ _SOKOL_PRIVATE const _sapp_gl_fbconfig* _sapp_gl_choose_fbconfig(const _sapp_gl_
 #include <shellapi.h>
 #pragma comment (lib, "Shell32.lib")
 
+#if !defined(SOKOL_WIN32_FORCE_MAIN)
+#pragma comment (linker, "/subsystem:windows")
+#endif
+
+#if (defined(WINAPI_FAMILY_PARTITION) && !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP))
+#pragma comment (lib, "WindowsApp.lib")
+#else
+#pragma comment (lib, "user32.lib")
+#if defined(SOKOL_D3D11)
+#pragma comment (lib, "dxgi.lib")
+#pragma comment (lib, "d3d11.lib")
+#pragma comment (lib, "dxguid.lib")
+#endif
+#if defined(SOKOL_GLCORE33)
+#pragma comment (lib, "gdi32.lib")
+#endif
+#endif
+
 #if defined(SOKOL_D3D11)
 #ifndef D3D11_NO_HELPERS
 #define D3D11_NO_HELPERS
@@ -3475,14 +3502,6 @@ _SOKOL_PRIVATE const _sapp_gl_fbconfig* _sapp_gl_choose_fbconfig(const _sapp_gl_
 #include <windows.h>
 #include <d3d11.h>
 #include <dxgi.h>
-#if (defined(WINAPI_FAMILY_PARTITION) && !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP))
-#pragma comment (lib, "WindowsApp.lib")
-#else
-#pragma comment (lib, "user32.lib")
-#pragma comment (lib, "dxgi.lib")
-#pragma comment (lib, "d3d11.lib")
-#pragma comment (lib, "dxguid.lib")
-#endif
 #endif
 
 /* see https://github.com/floooh/sokol/issues/138 */
@@ -8160,7 +8179,9 @@ SOKOL_API_IMPL bool sapp_keyboard_shown(void) {
 }
 
 SOKOL_API_IMPL void sapp_show_mouse(bool shown) {
-    #if defined(_WIN32)
+    #if defined(__APPLE__) && !TARGET_OS_IPHONE
+    _sapp_macos_show_mouse(shown);
+    #elif defined(_WIN32)
     _sapp_win32_show_mouse(shown);
     #else
     _SOKOL_UNUSED(shown);
