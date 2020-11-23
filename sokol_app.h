@@ -1302,6 +1302,66 @@ inline int sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
     #define GLX_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB 0x2098
 #endif
 
+
+/*== WIN32 DECLARATIONS ======================================================*/
+#if defined(_SAPP_WIN32)
+
+#ifndef DPI_ENUMS_DECLARED
+typedef enum PROCESS_DPI_AWARENESS
+{
+    PROCESS_DPI_UNAWARE = 0,
+    PROCESS_SYSTEM_DPI_AWARE = 1,
+    PROCESS_PER_MONITOR_DPI_AWARE = 2
+} PROCESS_DPI_AWARENESS;
+typedef enum MONITOR_DPI_TYPE {
+    MDT_EFFECTIVE_DPI = 0,
+    MDT_ANGULAR_DPI = 1,
+    MDT_RAW_DPI = 2,
+    MDT_DEFAULT = MDT_EFFECTIVE_DPI
+} MONITOR_DPI_TYPE;
+#endif /*DPI_ENUMS_DECLARED*/
+
+typedef BOOL(WINAPI* SETPROCESSDPIAWARE_T)(void);
+typedef HRESULT(WINAPI* SETPROCESSDPIAWARENESS_T)(PROCESS_DPI_AWARENESS);
+typedef HRESULT(WINAPI* GETDPIFORMONITOR_T)(HMONITOR, MONITOR_DPI_TYPE, UINT*, UINT*);
+
+typedef struct {
+    HWND hwnd;
+    HDC dc;
+    bool in_create_window;
+    bool iconified;
+    struct {
+        bool aware;
+        float content_scale;
+        float window_scale;
+        float mouse_scale;
+        SETPROCESSDPIAWARE_T setprocessdpiaware;
+        SETPROCESSDPIAWARENESS_T setprocessdpiawareness;
+        GETDPIFORMONITOR_T getdpiformonitor;
+    } dpi;
+} _sapp_win32_t;
+
+#if defined(SOKOL_D3D11)
+typedef struct {
+    IDXGIFactory* dxgi_factory;
+    ID3D11Device* device;
+    ID3D11DeviceContext* device_context;
+    typedef struct _sokol_d3d11_default_window_resources {
+        DXGI_SWAP_CHAIN_DESC swap_chain_desc;
+        IDXGISwapChain* swap_chain;
+        ID3D11Texture2D* rt;
+        ID3D11RenderTargetView* rtv;
+        ID3D11Texture2D* ds; /* depth stencil */
+        ID3D11DepthStencilView* dsv;
+    } d3d11_resources;
+} _sapp_d3d11_t;
+#endif
+
+#if defined(SOKOL_GLCORE33)
+#endif // SOKOL_GLCORE33
+
+#endif // _SAPP_WIN32
+
 /*== COMMON DECLARATIONS =====================================================*/
 
 /* helper macros */
@@ -1358,7 +1418,7 @@ typedef struct {
 /* size, in bytes, for a window (including the per platform/backend data) */
 #define _sapp_window_size_bytes(platform_data_size) sizeof(_sapp_window)+(platform_data_size)
 
-typedef struct {
+static struct {
     bool valid;
     int window_width;       /* remove, as it is per window */
     int window_height;      /* remove, as it is per window */
@@ -1390,7 +1450,22 @@ typedef struct {
     bool clipboard_enabled;
     int clipboard_size;
     char* clipboard;
+    #if defined(_SAPP_MACOS)
+        _sapp_macos_t macos;
+    #elif defined(_SAPP_IOS)
+        _sapp_ios_t ios;
+    #elif defined(_SAPP_EMSCRIPTEN)
+        _sapp_emsc_t emsc;
+    #elif defined(_SAPP_WIN32)
+        _sapp_win32_t win32;
+        #if defined(SOKOL_D3D11)
+            _sapp_d3d11_t d3d11;
+        #elif defined(SOKOL_GLCORE33)
+            _sapp_wgl_t wgl;
+        #endif
+    #endif
 
+    
     struct {
         int capacity;
         int size;
@@ -1398,8 +1473,7 @@ typedef struct {
         int padding32;
         void* windows; /* instances of (_sapp_window + per platform data) */
     } windows;
-} _sapp_state;
-static _sapp_state _sapp;
+} _sapp;
 
 typedef struct { int idx, count, max; } _sapp_window_iterator;
 
@@ -3646,39 +3720,6 @@ _SOKOL_PRIVATE const _sapp_gl_fbconfig* _sapp_gl_choose_fbconfig(const _sapp_gl_
 /*== WINDOWS ==================================================================*/
 #if defined(_SAPP_WIN32)
 
-#ifndef DPI_ENUMS_DECLARED
-typedef enum PROCESS_DPI_AWARENESS
-{
-    PROCESS_DPI_UNAWARE = 0,
-    PROCESS_SYSTEM_DPI_AWARE = 1,
-    PROCESS_PER_MONITOR_DPI_AWARE = 2
-} PROCESS_DPI_AWARENESS;
-typedef enum MONITOR_DPI_TYPE {
-    MDT_EFFECTIVE_DPI = 0,
-    MDT_ANGULAR_DPI = 1,
-    MDT_RAW_DPI = 2,
-    MDT_DEFAULT = MDT_EFFECTIVE_DPI
-} MONITOR_DPI_TYPE;
-#endif /*DPI_ENUMS_DECLARED*/
-
-static HDC _sapp_win32_dc;
-static bool _sapp_win32_in_create_window;
-static bool _sapp_win32_dpi_aware;
-static float _sapp_win32_content_scale;
-static float _sapp_win32_window_scale;
-static float _sapp_win32_mouse_scale;
-static bool _sapp_win32_iconified;
-typedef BOOL(WINAPI * SETPROCESSDPIAWARE_T)(void);
-typedef HRESULT(WINAPI * SETPROCESSDPIAWARENESS_T)(PROCESS_DPI_AWARENESS);
-typedef HRESULT(WINAPI * GETDPIFORMONITOR_T)(HMONITOR, MONITOR_DPI_TYPE, UINT*, UINT*);
-static SETPROCESSDPIAWARE_T _sapp_win32_setprocessdpiaware;
-static SETPROCESSDPIAWARENESS_T _sapp_win32_setprocessdpiawareness;
-static GETDPIFORMONITOR_T _sapp_win32_getdpiformonitor;
-#if defined(SOKOL_D3D11)
-static IDXGIFactory* _sapp_dxgi_factory;
-static ID3D11Device* _sapp_d3d11_device;
-static ID3D11DeviceContext* _sapp_d3d11_device_context;
-#endif
 #define WGL_NUMBER_PIXEL_FORMATS_ARB 0x2000
 #define WGL_SUPPORT_OPENGL_ARB 0x2010
 #define WGL_DRAW_TO_WINDOW_ARB 0x2001
@@ -4391,14 +4432,6 @@ _SOKOL_PRIVATE  void _sapp_win32_gl_loadfuncs(void) {
 
 #if defined(SOKOL_D3D11)
 
-typedef struct {
-    DXGI_SWAP_CHAIN_DESC swap_chain_desc;
-    IDXGISwapChain* swap_chain;
-    ID3D11Texture2D* rt;
-    ID3D11RenderTargetView* rtv;
-    ID3D11Texture2D* ds; /* depth stencil */
-    ID3D11DepthStencilView* dsv;
-} _sokol_d3d11_default_window_resources;
 
 #define _SAPP_SAFE_RELEASE(class, obj) if (obj) { class##_Release(obj); obj=0; }
 _SOKOL_PRIVATE void _sapp_d3d11_create_device(void) {
