@@ -16,11 +16,15 @@ Simple
 [STB-style](https://github.com/nothings/stb/blob/master/docs/stb_howto.txt)
 cross-platform libraries for C and C++, written in C.
 
-[See what's new](#updates) (**22-Oct-2020** sokol_app.h: initial drag'n'drop support for win32/macos/linux)
+[See what's new](#updates) (**27-Oct-2020** sokol_app.h emscripten: canvas id vs css selector bugfix)
 
 [Live Samples](https://floooh.github.io/sokol-html5/index.html) via WASM.
 
-Cross-platform libraries:
+[LearnOpenGL examples ported to sokol-gfx](https://www.geertarien.com/learnopengl-examples-html5/) by @geertarien (cool stuff!)
+
+[Dear ImGui starterkit](https://github.com/floooh/cimgui-sokol-starterkit) a self-contained starterkit for writing Dear ImGui apps in C.
+
+## Core libraries
 
 - [**sokol\_gfx.h**](https://github.com/floooh/sokol/blob/master/sokol_gfx.h): 3D-API wrapper (GL + Metal + D3D11)
 - [**sokol\_app.h**](https://github.com/floooh/sokol/blob/master/sokol_app.h): app framework wrapper (entry + window + 3D-context + input)
@@ -29,7 +33,7 @@ Cross-platform libraries:
 - [**sokol\_fetch.h**](https://github.com/floooh/sokol/blob/master/sokol_fetch.h): asynchronous data streaming from HTTP and local filesystem
 - [**sokol\_args.h**](https://github.com/floooh/sokol/blob/master/sokol_args.h): unified cmdline/URL arg parser for web and native apps
 
-Utility libraries:
+## Utility libraries
 
 - [**sokol\_imgui.h**](https://github.com/floooh/sokol/blob/master/util/sokol_imgui.h): sokol_gfx.h rendering backend for [Dear ImGui](https://github.com/ocornut/imgui)
 - [**sokol\_gl.h**](https://github.com/floooh/sokol/blob/master/util/sokol_gl.h): OpenGL 1.x style immediate-mode rendering API on top of sokol_gfx.h
@@ -38,11 +42,13 @@ Utility libraries:
 - [**sokol\_debugtext.h**](https://github.com/floooh/sokol/blob/master/util/sokol_debugtext.h): a simple text renderer using vintage home computer fonts
 - [**sokol\_memtrack.h**](https://github.com/floooh/sokol/blob/master/util/sokol_memtrack.h): easily track memory allocations in sokol headers
 
+## Notes
+
 WebAssembly is a 'first-class citizen', one important motivation for the
 Sokol headers is to provide a collection of cross-platform APIs with a
 minimal footprint on the web platform while still being useful.
 
-All headers are standalone and can be used independently from each other.
+The core headers are standalone and can be used independently from each other.
 
 Sample code is in a separate repo: https://github.com/floooh/sokol-samples
 
@@ -441,6 +447,12 @@ See the sokol_args.h header for a more complete documentation, and the [Tiny
 Emulators](https://floooh.github.io/tiny8bit/) for more interesting usage examples.
 
 # Updates
+
+- **27-Oct-2020**: I committed a bugfix for a longstanding WebGL canvas id versus
+  css-selector confusion in the emscripten/WASM backend code in sokol_app.h.
+  I think the fix should not require any changes in your code (because if
+  you'd be using a canvas name different from the default "canvas" it wouldn't
+  have worked before anyway). See this bug for details: https://github.com/floooh/sokol/issues/407
 
 - **22-Oct-2020**: sokol_app.h now has file drag'n'drop support on Win32,
   macOS and Linux. WASM/HTML5 support will be added soon-ish. This will
