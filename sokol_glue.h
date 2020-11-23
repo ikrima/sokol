@@ -138,7 +138,7 @@ SOKOL_API_IMPL sg_context_desc sapp_sgcontext_window(sapp_window window) {
     sg_context_desc desc = sapp_sgcontext();
     desc.d3d11.render_target_view_cb = _sapp_d3d11_get_render_target_view_window_cb;
     desc.d3d11.depth_stencil_view_cb = _sapp_d3d11_get_depth_stencil_view_window_cb;
-    desc.context_userdata = (void*)(uintptr_t)window.id;
+    desc.d3d11.user_data = (void*)(uintptr_t)window.id;
     return desc;
 }
 #endif
