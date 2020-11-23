@@ -1262,43 +1262,6 @@ inline int sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
     #include <GL/gl.h>
     #include <dlfcn.h> /* dlopen, dlsym, dlclose */
     #include <limits.h> /* LONG_MAX */
-    #define GLX_VENDOR 1
-    #define GLX_RGBA_BIT 0x00000001
-    #define GLX_WINDOW_BIT 0x00000001
-    #define GLX_DRAWABLE_TYPE 0x8010
-    #define GLX_RENDER_TYPE	0x8011
-    #define GLX_RGBA_TYPE 0x8014
-    #define GLX_DOUBLEBUFFER 5
-    #define GLX_STEREO 6
-    #define GLX_AUX_BUFFERS	7
-    #define GLX_RED_SIZE 8
-    #define GLX_GREEN_SIZE 9
-    #define GLX_BLUE_SIZE 10
-    #define GLX_ALPHA_SIZE 11
-    #define GLX_DEPTH_SIZE 12
-    #define GLX_STENCIL_SIZE 13
-    #define GLX_ACCUM_RED_SIZE 14
-    #define GLX_ACCUM_GREEN_SIZE 15
-    #define GLX_ACCUM_BLUE_SIZE	16
-    #define GLX_ACCUM_ALPHA_SIZE 17
-    #define GLX_SAMPLES 0x186a1
-    #define GLX_VISUAL_ID 0x800b
-    #define GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB 0x20b2
-    #define GLX_CONTEXT_DEBUG_BIT_ARB 0x00000001
-    #define GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB 0x00000002
-    #define GLX_CONTEXT_CORE_PROFILE_BIT_ARB 0x00000001
-    #define GLX_CONTEXT_PROFILE_MASK_ARB 0x9126
-    #define GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB 0x00000002
-    #define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
-    #define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
-    #define GLX_CONTEXT_FLAGS_ARB 0x2094
-    #define GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB 0x00000004
-    #define GLX_LOSE_CONTEXT_ON_RESET_ARB 0x8252
-    #define GLX_CONTEXT_RESET_NOTIFICATION_STRATEGY_ARB 0x8256
-    #define GLX_NO_RESET_NOTIFICATION_ARB 0x8261
-    #define GLX_CONTEXT_RELEASE_BEHAVIOR_ARB 0x2097
-    #define GLX_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB 0
-    #define GLX_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB 0x2098
 #endif
 
 /*== MACOS DECLARATIONS ======================================================*/
@@ -1497,6 +1460,159 @@ typedef struct {
 
 #endif // _SAPP_WIN32
 
+/*== ANDROID DECLARATIONS ====================================================*/
+
+#if defined(_SAPP_ANDROID)
+typedef enum {
+    _SOKOL_ANDROID_MSG_CREATE,
+    _SOKOL_ANDROID_MSG_RESUME,
+    _SOKOL_ANDROID_MSG_PAUSE,
+    _SOKOL_ANDROID_MSG_FOCUS,
+    _SOKOL_ANDROID_MSG_NO_FOCUS,
+    _SOKOL_ANDROID_MSG_SET_NATIVE_WINDOW,
+    _SOKOL_ANDROID_MSG_SET_INPUT_QUEUE,
+    _SOKOL_ANDROID_MSG_DESTROY,
+} _sapp_android_msg_t;
+
+typedef struct {
+    pthread_t thread;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    int read_from_main_fd;
+    int write_from_main_fd;
+} _sapp_android_pt_t;
+
+typedef struct {
+    ANativeWindow* window;
+    AInputQueue* input;
+} _sapp_android_resources_t;
+
+typedef struct {
+    ANativeActivity* activity;
+    _sapp_android_pt_t pt;
+    _sapp_android_resources_t pending;
+    _sapp_android_resources_t current;
+    ALooper* looper;
+    bool is_thread_started;
+    bool is_thread_stopping;
+    bool is_thread_stopped;
+    bool has_created;
+    bool has_resumed;
+    bool has_focus;
+    EGLConfig config;
+    EGLDisplay display;
+    EGLContext context;
+    EGLSurface surface;
+} _sapp_android_t;
+
+#endif // _SAPP_ANDROID
+
+/*== LINUX DECLARATIONS ======================================================*/
+#if defined(_SAPP_LINUX)
+
+#define GLX_VENDOR 1
+#define GLX_RGBA_BIT 0x00000001
+#define GLX_WINDOW_BIT 0x00000001
+#define GLX_DRAWABLE_TYPE 0x8010
+#define GLX_RENDER_TYPE	0x8011
+#define GLX_DOUBLEBUFFER 5
+#define GLX_RED_SIZE 8
+#define GLX_GREEN_SIZE 9
+#define GLX_BLUE_SIZE 10
+#define GLX_ALPHA_SIZE 11
+#define GLX_DEPTH_SIZE 12
+#define GLX_STENCIL_SIZE 13
+#define GLX_SAMPLES 0x186a1
+#define GLX_CONTEXT_CORE_PROFILE_BIT_ARB 0x00000001
+#define GLX_CONTEXT_PROFILE_MASK_ARB 0x9126
+#define GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB 0x00000002
+#define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
+#define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
+#define GLX_CONTEXT_FLAGS_ARB 0x2094
+
+typedef XID GLXWindow;
+typedef XID GLXDrawable;
+typedef struct __GLXFBConfig* GLXFBConfig;
+typedef struct __GLXcontext* GLXContext;
+typedef void (*__GLXextproc)(void);
+
+typedef int (*PFNGLXGETFBCONFIGATTRIBPROC)(Display*,GLXFBConfig,int,int*);
+typedef const char* (*PFNGLXGETCLIENTSTRINGPROC)(Display*,int);
+typedef Bool (*PFNGLXQUERYEXTENSIONPROC)(Display*,int*,int*);
+typedef Bool (*PFNGLXQUERYVERSIONPROC)(Display*,int*,int*);
+typedef void (*PFNGLXDESTROYCONTEXTPROC)(Display*,GLXContext);
+typedef Bool (*PFNGLXMAKECURRENTPROC)(Display*,GLXDrawable,GLXContext);
+typedef void (*PFNGLXSWAPBUFFERSPROC)(Display*,GLXDrawable);
+typedef const char* (*PFNGLXQUERYEXTENSIONSSTRINGPROC)(Display*,int);
+typedef GLXFBConfig* (*PFNGLXGETFBCONFIGSPROC)(Display*,int,int*);
+typedef __GLXextproc (* PFNGLXGETPROCADDRESSPROC)(const GLubyte *procName);
+typedef void (*PFNGLXSWAPINTERVALEXTPROC)(Display*,GLXDrawable,int);
+typedef XVisualInfo* (*PFNGLXGETVISUALFROMFBCONFIGPROC)(Display*,GLXFBConfig);
+typedef GLXWindow (*PFNGLXCREATEWINDOWPROC)(Display*,GLXFBConfig,Window,const int*);
+typedef void (*PFNGLXDESTROYWINDOWPROC)(Display*,GLXWindow);
+
+typedef int (*PFNGLXSWAPINTERVALMESAPROC)(int);
+typedef GLXContext (*PFNGLXCREATECONTEXTATTRIBSARBPROC)(Display*,GLXFBConfig,GLXContext,Bool,const int*);
+
+typedef struct {
+    Display* display;
+    int screen;
+    Window root;
+    Colormap colormap;
+    Window window;
+    int window_state;
+    float dpi;
+    unsigned char error_code;
+    Atom UTF8_STRING;
+    Atom WM_PROTOCOLS;
+    Atom WM_DELETE_WINDOW;
+    Atom WM_STATE;
+    Atom NET_WM_NAME;
+    Atom NET_WM_ICON_NAME;
+    Atom NET_WM_STATE;
+    Atom NET_WM_STATE_FULLSCREEN;
+} _sapp_x11_t;
+
+typedef struct {
+    void* libgl;
+    int major;
+    int minor;
+    int eventbase;
+    int errorbase;
+    GLXContext ctx;
+    GLXWindow window;
+
+    // GLX 1.3 functions
+    PFNGLXGETFBCONFIGSPROC GetFBConfigs;
+    PFNGLXGETFBCONFIGATTRIBPROC GetFBConfigAttrib;
+    PFNGLXGETCLIENTSTRINGPROC GetClientString;
+    PFNGLXQUERYEXTENSIONPROC QueryExtension;
+    PFNGLXQUERYVERSIONPROC QueryVersion;
+    PFNGLXDESTROYCONTEXTPROC DestroyContext;
+    PFNGLXMAKECURRENTPROC MakeCurrent;
+    PFNGLXSWAPBUFFERSPROC SwapBuffers;
+    PFNGLXQUERYEXTENSIONSSTRINGPROC QueryExtensionsString;
+    PFNGLXGETVISUALFROMFBCONFIGPROC GetVisualFromFBConfig;
+    PFNGLXCREATEWINDOWPROC CreateWindow;
+    PFNGLXDESTROYWINDOWPROC DestroyWindow;
+
+    // GLX 1.4 and extension functions
+    PFNGLXGETPROCADDRESSPROC GetProcAddress;
+    PFNGLXGETPROCADDRESSPROC GetProcAddressARB;
+    PFNGLXSWAPINTERVALEXTPROC SwapIntervalEXT;
+    PFNGLXSWAPINTERVALMESAPROC SwapIntervalMESA;
+    PFNGLXCREATECONTEXTATTRIBSARBPROC CreateContextAttribsARB;
+
+    // extension availability
+    bool EXT_swap_control;
+    bool MESA_swap_control;
+    bool ARB_multisample;
+    bool ARB_create_context;
+    bool ARB_create_context_profile;
+} _sapp_glx_t;
+
+#endif // _SAPP_LINUX
+
 /*== COMMON DECLARATIONS =====================================================*/
 
 /* helper macros */
@@ -1598,6 +1714,11 @@ static struct {
         #elif defined(SOKOL_GLCORE33)
             _sapp_wgl_t wgl;
         #endif
+    #elif defined(_SAPP_ANDROID)
+        _sapp_android_t android;
+    #elif defined(_SAPP_LINUX)
+        _sapp_x11_t x11;
+        _sapp_glx_t glx;
     #endif
 
     
@@ -5646,55 +5767,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 /*== Android ================================================================*/
 #if defined(_SAPP_ANDROID)
-typedef struct {
-    pthread_t thread;
-    pthread_mutex_t mutex;
-    pthread_cond_t cond;
-    int read_from_main_fd;
-    int write_from_main_fd;
-} _sapp_android_pt_t;
-
-typedef struct {
-    ANativeWindow* window;
-    AInputQueue* input;
-} _sapp_android_resources_t;
-
-typedef enum {
-    _SOKOL_ANDROID_MSG_CREATE,
-    _SOKOL_ANDROID_MSG_RESUME,
-    _SOKOL_ANDROID_MSG_PAUSE,
-    _SOKOL_ANDROID_MSG_FOCUS,
-    _SOKOL_ANDROID_MSG_NO_FOCUS,
-    _SOKOL_ANDROID_MSG_SET_NATIVE_WINDOW,
-    _SOKOL_ANDROID_MSG_SET_INPUT_QUEUE,
-    _SOKOL_ANDROID_MSG_DESTROY,
-} _sapp_android_msg_t;
-
-typedef struct {
-    ANativeActivity* activity;
-    _sapp_android_pt_t pt;
-    _sapp_android_resources_t pending;
-    _sapp_android_resources_t current;
-    ALooper* looper;
-    bool is_thread_started;
-    bool is_thread_stopping;
-    bool is_thread_stopped;
-    bool has_created;
-    bool has_resumed;
-    bool has_focus;
-    EGLConfig config;
-    EGLDisplay display;
-    EGLContext context;
-    EGLSurface surface;
-} _sapp_android_state_t;
-
-static _sapp_android_state_t _sapp_android_state;
 
 /* android loop thread */
 _SOKOL_PRIVATE bool _sapp_android_init_egl(void) {
-    _sapp_android_state_t* state = &_sapp_android_state;
-    SOKOL_ASSERT(state->display == EGL_NO_DISPLAY);
-    SOKOL_ASSERT(state->context == EGL_NO_CONTEXT);
+    SOKOL_ASSERT(_sapp.android.display == EGL_NO_DISPLAY);
+    SOKOL_ASSERT(_sapp.android.context == EGL_NO_CONTEXT);
 
     EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (display == EGL_NO_DISPLAY) {
@@ -5755,63 +5832,60 @@ _SOKOL_PRIVATE bool _sapp_android_init_egl(void) {
         return false;
     }
 
-    state->config = config;
-    state->display = display;
-    state->context = context;
+    _sapp.android.config = config;
+    _sapp.android.display = display;
+    _sapp.android.context = context;
     return true;
 }
 
 _SOKOL_PRIVATE void _sapp_android_cleanup_egl(void) {
-    _sapp_android_state_t* state = &_sapp_android_state;
-    if (state->display != EGL_NO_DISPLAY) {
-        eglMakeCurrent(state->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-        if (state->surface != EGL_NO_SURFACE) {
+    if (_sapp.android.display != EGL_NO_DISPLAY) {
+        eglMakeCurrent(_sapp.android.display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+        if (_sapp.android.surface != EGL_NO_SURFACE) {
             SOKOL_LOG("Destroying egl surface");
-            eglDestroySurface(state->display, state->surface);
-            state->surface = EGL_NO_SURFACE;
+            eglDestroySurface(_sapp.android.display, _sapp.android.surface);
+            _sapp.android.surface = EGL_NO_SURFACE;
         }
-        if (state->context != EGL_NO_CONTEXT) {
+        if (_sapp.android.context != EGL_NO_CONTEXT) {
             SOKOL_LOG("Destroying egl context");
-            eglDestroyContext(state->display, state->context);
-            state->context = EGL_NO_CONTEXT;
+            eglDestroyContext(_sapp.android.display, _sapp.android.context);
+            _sapp.android.context = EGL_NO_CONTEXT;
         }
         SOKOL_LOG("Terminating egl display");
-        eglTerminate(state->display);
-        state->display = EGL_NO_DISPLAY;
+        eglTerminate(_sapp.android.display);
+        _sapp.android.display = EGL_NO_DISPLAY;
     }
 }
 
 _SOKOL_PRIVATE bool _sapp_android_init_egl_surface(ANativeWindow* window) {
-    _sapp_android_state_t* state = &_sapp_android_state;
-    SOKOL_ASSERT(state->display != EGL_NO_DISPLAY);
-    SOKOL_ASSERT(state->context != EGL_NO_CONTEXT);
-    SOKOL_ASSERT(state->surface == EGL_NO_SURFACE);
+    SOKOL_ASSERT(_sapp.android.display != EGL_NO_DISPLAY);
+    SOKOL_ASSERT(_sapp.android.context != EGL_NO_CONTEXT);
+    SOKOL_ASSERT(_sapp.android.surface == EGL_NO_SURFACE);
     SOKOL_ASSERT(window);
 
     /* TODO: set window flags */
     /* ANativeActivity_setWindowFlags(activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0); */
 
     /* create egl surface and make it current */
-    EGLSurface surface = eglCreateWindowSurface(state->display, state->config, window, NULL);
+    EGLSurface surface = eglCreateWindowSurface(_sapp.android.display, _sapp.android.config, window, NULL);
     if (surface == EGL_NO_SURFACE) {
         return false;
     }
-    if (eglMakeCurrent(state->display, surface, surface, state->context) == EGL_FALSE) {
+    if (eglMakeCurrent(_sapp.android.display, surface, surface, _sapp.android.context) == EGL_FALSE) {
         return false;
     }
-    state->surface = surface;
+    _sapp.android.surface = surface;
     return true;
 }
 
 _SOKOL_PRIVATE void _sapp_android_cleanup_egl_surface(void) {
-    _sapp_android_state_t* state = &_sapp_android_state;
-    if (state->display == EGL_NO_DISPLAY) {
+    if (_sapp.android.display == EGL_NO_DISPLAY) {
         return;
     }
-    eglMakeCurrent(state->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    if (state->surface != EGL_NO_SURFACE) {
-        eglDestroySurface(state->display, state->surface);
-        state->surface = EGL_NO_SURFACE;
+    eglMakeCurrent(_sapp.android.display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    if (_sapp.android.surface != EGL_NO_SURFACE) {
+        eglDestroySurface(_sapp.android.display, _sapp.android.surface);
+        _sapp.android.surface = EGL_NO_SURFACE;
     }
 }
 
@@ -5824,10 +5898,9 @@ _SOKOL_PRIVATE void _sapp_android_app_event(sapp_event_type type) {
 }
 
 _SOKOL_PRIVATE void _sapp_android_update_dimensions(ANativeWindow* window, bool force_update) {
-    _sapp_android_state_t* state = &_sapp_android_state;
-    SOKOL_ASSERT(state->display != EGL_NO_DISPLAY);
-    SOKOL_ASSERT(state->context != EGL_NO_CONTEXT);
-    SOKOL_ASSERT(state->surface != EGL_NO_SURFACE);
+    SOKOL_ASSERT(_sapp.android.display != EGL_NO_DISPLAY);
+    SOKOL_ASSERT(_sapp.android.context != EGL_NO_CONTEXT);
+    SOKOL_ASSERT(_sapp.android.surface != EGL_NO_SURFACE);
     SOKOL_ASSERT(window);
 
     const int32_t win_w = ANativeWindow_getWidth(window);
@@ -5841,7 +5914,7 @@ _SOKOL_PRIVATE void _sapp_android_update_dimensions(ANativeWindow* window, bool 
             const int32_t buf_w = win_w / 2;
             const int32_t buf_h = win_h / 2;
             EGLint format;
-            EGLBoolean egl_result = eglGetConfigAttrib(state->display, state->config, EGL_NATIVE_VISUAL_ID, &format);
+            EGLBoolean egl_result = eglGetConfigAttrib(_sapp.android.display, _sapp.android.config, EGL_NATIVE_VISUAL_ID, &format);
             SOKOL_ASSERT(egl_result == EGL_TRUE);
             /* NOTE: calling ANativeWindow_setBuffersGeometry() with the same dimensions
                 as the ANativeWindow size results in weird display artefacts, that's
@@ -5855,8 +5928,8 @@ _SOKOL_PRIVATE void _sapp_android_update_dimensions(ANativeWindow* window, bool 
 
     /* query surface size */
     EGLint fb_w, fb_h;
-    EGLBoolean egl_result_w = eglQuerySurface(state->display, state->surface, EGL_WIDTH, &fb_w);
-    EGLBoolean egl_result_h = eglQuerySurface(state->display, state->surface, EGL_HEIGHT, &fb_h);
+    EGLBoolean egl_result_w = eglQuerySurface(_sapp.android.display, _sapp.android.surface, EGL_WIDTH, &fb_w);
+    EGLBoolean egl_result_h = eglQuerySurface(_sapp.android.display, _sapp.android.surface, EGL_HEIGHT, &fb_h);
     SOKOL_ASSERT(egl_result_w == EGL_TRUE);
     SOKOL_ASSERT(egl_result_h == EGL_TRUE);
     const bool fb_changed = (fb_w != _sapp.framebuffer_width) || (fb_h != _sapp.framebuffer_height);
@@ -5872,9 +5945,8 @@ _SOKOL_PRIVATE void _sapp_android_update_dimensions(ANativeWindow* window, bool 
 }
 
 _SOKOL_PRIVATE void _sapp_android_cleanup(void) {
-    _sapp_android_state_t* state = &_sapp_android_state;
     SOKOL_LOG("Cleaning up");
-    if (state->surface != EGL_NO_SURFACE) {
+    if (_sapp.android.surface != EGL_NO_SURFACE) {
         /* egl context is bound, cleanup gracefully */
         if (_sapp.init_called && !_sapp.cleanup_called) {
             SOKOL_LOG("cleanup_cb()");
@@ -5889,17 +5961,16 @@ _SOKOL_PRIVATE void _sapp_android_shutdown(void) {
     /* try to cleanup while we still have a surface and can call cleanup_cb() */
     _sapp_android_cleanup();
     /* request exit */
-    ANativeActivity_finish(_sapp_android_state.activity);
+    ANativeActivity_finish(_sapp.android.activity);
 }
 
 _SOKOL_PRIVATE void _sapp_android_frame(void) {
-    _sapp_android_state_t* state = &_sapp_android_state;
-    SOKOL_ASSERT(state->display != EGL_NO_DISPLAY);
-    SOKOL_ASSERT(state->context != EGL_NO_CONTEXT);
-    SOKOL_ASSERT(state->surface != EGL_NO_SURFACE);
-    _sapp_android_update_dimensions(state->current.window, false);
+    SOKOL_ASSERT(_sapp.android.display != EGL_NO_DISPLAY);
+    SOKOL_ASSERT(_sapp.android.context != EGL_NO_CONTEXT);
+    SOKOL_ASSERT(_sapp.android.surface != EGL_NO_SURFACE);
+    _sapp_android_update_dimensions(_sapp.android.current.window, false);
     _sapp_frame();
-    eglSwapBuffers(state->display, _sapp_android_state.surface);
+    eglSwapBuffers(_sapp.android.display, _sapp.android.surface);
 }
 
 _SOKOL_PRIVATE bool _sapp_android_touch_event(const AInputEvent* e) {
@@ -5981,18 +6052,17 @@ _SOKOL_PRIVATE int _sapp_android_input_cb(int fd, int events, void* data) {
         SOKOL_LOG("_sapp_android_input_cb() encountered unsupported event");
         return 1;
     }
-    _sapp_android_state_t* state = &_sapp_android_state;;
-    SOKOL_ASSERT(state->current.input);
+    SOKOL_ASSERT(_sapp.android.current.input);
     AInputEvent* event = NULL;
-    while (AInputQueue_getEvent(state->current.input, &event) >= 0) {
-        if (AInputQueue_preDispatchEvent(state->current.input, event) != 0) {
+    while (AInputQueue_getEvent(_sapp.android.current.input, &event) >= 0) {
+        if (AInputQueue_preDispatchEvent(_sapp.android.current.input, event) != 0) {
             continue;
         }
         int32_t handled = 0;
         if (_sapp_android_touch_event(event) || _sapp_android_key_event(event)) {
             handled = 1;
         }
-        AInputQueue_finishEvent(state->current.input, event, handled);
+        AInputQueue_finishEvent(_sapp.android.current.input, event, handled);
     }
     return 1;
 }
@@ -6002,7 +6072,6 @@ _SOKOL_PRIVATE int _sapp_android_main_cb(int fd, int events, void* data) {
         SOKOL_LOG("_sapp_android_main_cb() encountered unsupported event");
         return 1;
     }
-    _sapp_android_state_t* state = &_sapp_android_state;
 
     _sapp_android_msg_t msg;
     if (read(fd, &msg, sizeof(msg)) != sizeof(msg)) {
@@ -6010,7 +6079,7 @@ _SOKOL_PRIVATE int _sapp_android_main_cb(int fd, int events, void* data) {
         return 1;
     }
 
-    pthread_mutex_lock(&state->pt.mutex);
+    pthread_mutex_lock(&_sapp.android.pt.mutex);
     switch (msg) {
         case _SOKOL_ANDROID_MSG_CREATE:
             {
@@ -6019,81 +6088,81 @@ _SOKOL_PRIVATE int _sapp_android_main_cb(int fd, int events, void* data) {
                 bool result = _sapp_android_init_egl();
                 SOKOL_ASSERT(result);
                 _sapp.valid = true;
-                state->has_created = true;
+                _sapp.android.has_created = true;
             }
             break;
         case _SOKOL_ANDROID_MSG_RESUME:
             SOKOL_LOG("MSG_RESUME");
-            state->has_resumed = true;
+            _sapp.android.has_resumed = true;
             _sapp_android_app_event(SAPP_EVENTTYPE_RESUMED);
             break;
         case _SOKOL_ANDROID_MSG_PAUSE:
             SOKOL_LOG("MSG_PAUSE");
-            state->has_resumed = false;
+            _sapp.android.has_resumed = false;
             _sapp_android_app_event(SAPP_EVENTTYPE_SUSPENDED);
             break;
         case _SOKOL_ANDROID_MSG_FOCUS:
             SOKOL_LOG("MSG_FOCUS");
-            state->has_focus = true;
+            _sapp.android.has_focus = true;
             break;
         case _SOKOL_ANDROID_MSG_NO_FOCUS:
             SOKOL_LOG("MSG_NO_FOCUS");
-            state->has_focus = false;
+            _sapp.android.has_focus = false;
             break;
         case _SOKOL_ANDROID_MSG_SET_NATIVE_WINDOW:
             SOKOL_LOG("MSG_SET_NATIVE_WINDOW");
-            if (state->current.window != state->pending.window) {
-                if (state->current.window != NULL) {
+            if (_sapp.android.current.window != _sapp.android.pending.window) {
+                if (_sapp.android.current.window != NULL) {
                     _sapp_android_cleanup_egl_surface();
                 }
-                if (state->pending.window != NULL) {
+                if (_sapp.android.pending.window != NULL) {
                     SOKOL_LOG("Creating egl surface ...");
-                    if (_sapp_android_init_egl_surface(state->pending.window)) {
+                    if (_sapp_android_init_egl_surface(_sapp.android.pending.window)) {
                         SOKOL_LOG("... ok!");
-                        _sapp_android_update_dimensions(state->pending.window, true);
+                        _sapp_android_update_dimensions(_sapp.android.pending.window, true);
                     } else {
                         SOKOL_LOG("... failed!");
                         _sapp_android_shutdown();
                     }
                 }
             }
-            state->current.window = state->pending.window;
+            _sapp.android.current.window = _sapp.android.pending.window;
             break;
         case _SOKOL_ANDROID_MSG_SET_INPUT_QUEUE:
             SOKOL_LOG("MSG_SET_INPUT_QUEUE");
-            if (state->current.input != state->pending.input) {
-                if (state->current.input != NULL) {
-                    AInputQueue_detachLooper(state->current.input);
+            if (_sapp.android.current.input != _sapp.android.pending.input) {
+                if (_sapp.android.current.input != NULL) {
+                    AInputQueue_detachLooper(_sapp.android.current.input);
                 }
-                if (state->pending.input != NULL) {
+                if (_sapp.android.pending.input != NULL) {
                     AInputQueue_attachLooper(
-                        state->pending.input,
-                        state->looper,
+                        _sapp.android.pending.input,
+                        _sapp.android.looper,
                         ALOOPER_POLL_CALLBACK,
                         _sapp_android_input_cb,
                         NULL); /* data */
                 }
             }
-            state->current.input = state->pending.input;
+            _sapp.android.current.input = _sapp.android.pending.input;
             break;
         case _SOKOL_ANDROID_MSG_DESTROY:
             SOKOL_LOG("MSG_DESTROY");
             _sapp_android_cleanup();
             _sapp.valid = false;
-            state->is_thread_stopping = true;
+            _sapp.android.is_thread_stopping = true;
             break;
         default:
             SOKOL_LOG("Unknown msg type received");
             break;
     }
-    pthread_cond_broadcast(&state->pt.cond); /* signal "received" */
-    pthread_mutex_unlock(&state->pt.mutex);
+    pthread_cond_broadcast(&_sapp.android.pt.cond); /* signal "received" */
+    pthread_mutex_unlock(&_sapp.android.pt.mutex);
     return 1;
 }
 
 _SOKOL_PRIVATE bool _sapp_android_should_update(void) {
-    bool is_in_front = _sapp_android_state.has_resumed && _sapp_android_state.has_focus;
-    bool has_surface = _sapp_android_state.surface != EGL_NO_SURFACE;
+    bool is_in_front = _sapp.android.has_resumed && _sapp.android.has_focus;
+    bool has_surface = _sapp.android.surface != EGL_NO_SURFACE;
     return is_in_front && has_surface;
 }
 
@@ -6102,33 +6171,33 @@ _SOKOL_PRIVATE void _sapp_android_show_keyboard(bool shown) {
     /* This seems to be broken in the NDK, but there is (a very cumbersome) workaround... */
     if (shown) {
         SOKOL_LOG("Showing keyboard");
-        ANativeActivity_showSoftInput(_sapp_android_state.activity, ANATIVEACTIVITY_SHOW_SOFT_INPUT_FORCED);
+        ANativeActivity_showSoftInput(_sapp.android.activity, ANATIVEACTIVITY_SHOW_SOFT_INPUT_FORCED);
     } else {
         SOKOL_LOG("Hiding keyboard");
-        ANativeActivity_hideSoftInput(_sapp_android_state.activity, ANATIVEACTIVITY_HIDE_SOFT_INPUT_NOT_ALWAYS);
+        ANativeActivity_hideSoftInput(_sapp.android.activity, ANATIVEACTIVITY_HIDE_SOFT_INPUT_NOT_ALWAYS);
     }
 }
 
-_SOKOL_PRIVATE void* _sapp_android_loop(void* obj) {
+_SOKOL_PRIVATE void* _sapp_android_loop(void* arg) {
+    _SOKOL_UNUSED(arg);
     SOKOL_LOG("Loop thread started");
-    _sapp_android_state_t* state = (_sapp_android_state_t*)obj;
 
-    state->looper = ALooper_prepare(0 /* or ALOOPER_PREPARE_ALLOW_NON_CALLBACKS*/);
-    ALooper_addFd(state->looper,
-        state->pt.read_from_main_fd,
+    _sapp.android.looper = ALooper_prepare(0 /* or ALOOPER_PREPARE_ALLOW_NON_CALLBACKS*/);
+    ALooper_addFd(_sapp.android.looper,
+        _sapp.android.pt.read_from_main_fd,
         ALOOPER_POLL_CALLBACK,
         ALOOPER_EVENT_INPUT,
         _sapp_android_main_cb,
         NULL); /* data */
 
     /* signal start to main thread */
-    pthread_mutex_lock(&state->pt.mutex);
-    state->is_thread_started = true;
-    pthread_cond_broadcast(&state->pt.cond);
-    pthread_mutex_unlock(&state->pt.mutex);
+    pthread_mutex_lock(&_sapp.android.pt.mutex);
+    _sapp.android.is_thread_started = true;
+    pthread_cond_broadcast(&_sapp.android.pt.cond);
+    pthread_mutex_unlock(&_sapp.android.pt.mutex);
 
     /* main loop */
-    while (!state->is_thread_stopping) {
+    while (!_sapp.android.is_thread_stopping) {
         /* sokol frame */
         if (_sapp_android_should_update()) {
             _sapp_android_frame();
@@ -6136,33 +6205,33 @@ _SOKOL_PRIVATE void* _sapp_android_loop(void* obj) {
 
         /* process all events (or stop early if app is requested to quit) */
         bool process_events = true;
-        while (process_events && !state->is_thread_stopping) {
-            bool block_until_event = !state->is_thread_stopping && !_sapp_android_should_update();
+        while (process_events && !_sapp.android.is_thread_stopping) {
+            bool block_until_event = !_sapp.android.is_thread_stopping && !_sapp_android_should_update();
             process_events = ALooper_pollOnce(block_until_event ? -1 : 0, NULL, NULL, NULL) == ALOOPER_POLL_CALLBACK;
         }
     }
 
     /* cleanup thread */
-    if (state->current.input != NULL) {
-        AInputQueue_detachLooper(state->current.input);
+    if (_sapp.android.current.input != NULL) {
+        AInputQueue_detachLooper(_sapp.android.current.input);
     }
 
     /* the following causes heap corruption on exit, why??
-    ALooper_removeFd(state->looper, state->pt.read_from_main_fd);
-    ALooper_release(state->looper);*/
+    ALooper_removeFd(_sapp.android.looper, _sapp.android.pt.read_from_main_fd);
+    ALooper_release(_sapp.android.looper);*/
 
     /* signal "destroyed" */
-    pthread_mutex_lock(&state->pt.mutex);
-    state->is_thread_stopped = true;
-    pthread_cond_broadcast(&state->pt.cond);
-    pthread_mutex_unlock(&state->pt.mutex);
+    pthread_mutex_lock(&_sapp.android.pt.mutex);
+    _sapp.android.is_thread_stopped = true;
+    pthread_cond_broadcast(&_sapp.android.pt.cond);
+    pthread_mutex_unlock(&_sapp.android.pt.mutex);
     SOKOL_LOG("Loop thread done");
     return NULL;
 }
 
 /* android main/ui thread */
-_SOKOL_PRIVATE void _sapp_android_msg(_sapp_android_state_t* state, _sapp_android_msg_t msg) {
-    if (write(state->pt.write_from_main_fd, &msg, sizeof(msg)) != sizeof(msg)) {
+_SOKOL_PRIVATE void _sapp_android_msg(_sapp_android_msg_t msg) {
+    if (write(_sapp.android.pt.write_from_main_fd, &msg, sizeof(msg)) != sizeof(msg)) {
         SOKOL_LOG("Could not write to write_from_main_fd");
     }
 }
@@ -6173,7 +6242,7 @@ _SOKOL_PRIVATE void _sapp_android_on_start(ANativeActivity* activity) {
 
 _SOKOL_PRIVATE void _sapp_android_on_resume(ANativeActivity* activity) {
     SOKOL_LOG("NativeActivity onResume()");
-    _sapp_android_msg(&_sapp_android_state, _SOKOL_ANDROID_MSG_RESUME);
+    _sapp_android_msg(_SOKOL_ANDROID_MSG_RESUME);
 }
 
 _SOKOL_PRIVATE void* _sapp_android_on_save_instance_state(ANativeActivity* activity, size_t* out_size) {
@@ -6185,59 +6254,59 @@ _SOKOL_PRIVATE void* _sapp_android_on_save_instance_state(ANativeActivity* activ
 _SOKOL_PRIVATE void _sapp_android_on_window_focus_changed(ANativeActivity* activity, int has_focus) {
     SOKOL_LOG("NativeActivity onWindowFocusChanged()");
     if (has_focus) {
-        _sapp_android_msg(&_sapp_android_state, _SOKOL_ANDROID_MSG_FOCUS);
+        _sapp_android_msg(_SOKOL_ANDROID_MSG_FOCUS);
     } else {
-        _sapp_android_msg(&_sapp_android_state, _SOKOL_ANDROID_MSG_NO_FOCUS);
+        _sapp_android_msg(_SOKOL_ANDROID_MSG_NO_FOCUS);
     }
 }
 
 _SOKOL_PRIVATE void _sapp_android_on_pause(ANativeActivity* activity) {
     SOKOL_LOG("NativeActivity onPause()");
-    _sapp_android_msg(&_sapp_android_state, _SOKOL_ANDROID_MSG_PAUSE);
+    _sapp_android_msg(_SOKOL_ANDROID_MSG_PAUSE);
 }
 
 _SOKOL_PRIVATE void _sapp_android_on_stop(ANativeActivity* activity) {
     SOKOL_LOG("NativeActivity onStop()");
 }
 
-_SOKOL_PRIVATE void _sapp_android_msg_set_native_window(_sapp_android_state_t* state, ANativeWindow* window) {
-    pthread_mutex_lock(&state->pt.mutex);
-    state->pending.window = window;
-    _sapp_android_msg(state, _SOKOL_ANDROID_MSG_SET_NATIVE_WINDOW);
-    while (state->current.window != window) {
-        pthread_cond_wait(&state->pt.cond, &state->pt.mutex);
+_SOKOL_PRIVATE void _sapp_android_msg_set_native_window(ANativeWindow* window) {
+    pthread_mutex_lock(&_sapp.android.pt.mutex);
+    _sapp.android.pending.window = window;
+    _sapp_android_msg(_SOKOL_ANDROID_MSG_SET_NATIVE_WINDOW);
+    while (_sapp.android.current.window != window) {
+        pthread_cond_wait(&_sapp.android.pt.cond, &_sapp.android.pt.mutex);
     }
-    pthread_mutex_unlock(&state->pt.mutex);
+    pthread_mutex_unlock(&_sapp.android.pt.mutex);
 }
 
 _SOKOL_PRIVATE void _sapp_android_on_native_window_created(ANativeActivity* activity, ANativeWindow* window) {
     SOKOL_LOG("NativeActivity onNativeWindowCreated()");
-    _sapp_android_msg_set_native_window(&_sapp_android_state, window);
+    _sapp_android_msg_set_native_window(window);
 }
 
 _SOKOL_PRIVATE void _sapp_android_on_native_window_destroyed(ANativeActivity* activity, ANativeWindow* window) {
     SOKOL_LOG("NativeActivity onNativeWindowDestroyed()");
-    _sapp_android_msg_set_native_window(&_sapp_android_state, NULL);
+    _sapp_android_msg_set_native_window(NULL);
 }
 
-_SOKOL_PRIVATE void _sapp_android_msg_set_input_queue(_sapp_android_state_t* state, AInputQueue* input) {
-    pthread_mutex_lock(&state->pt.mutex);
-    state->pending.input = input;
-    _sapp_android_msg(state, _SOKOL_ANDROID_MSG_SET_INPUT_QUEUE);
-    while (state->current.input != input) {
-        pthread_cond_wait(&state->pt.cond, &state->pt.mutex);
+_SOKOL_PRIVATE void _sapp_android_msg_set_input_queue(AInputQueue* input) {
+    pthread_mutex_lock(&_sapp.android.pt.mutex);
+    _sapp.android.pending.input = input;
+    _sapp_android_msg(_SOKOL_ANDROID_MSG_SET_INPUT_QUEUE);
+    while (_sapp.android.current.input != input) {
+        pthread_cond_wait(&_sapp.android.pt.cond, &_sapp.android.pt.mutex);
     }
-    pthread_mutex_unlock(&state->pt.mutex);
+    pthread_mutex_unlock(&_sapp.android.pt.mutex);
 }
 
 _SOKOL_PRIVATE void _sapp_android_on_input_queue_created(ANativeActivity* activity, AInputQueue* queue) {
     SOKOL_LOG("NativeActivity onInputQueueCreated()");
-    _sapp_android_msg_set_input_queue(&_sapp_android_state, queue);
+    _sapp_android_msg_set_input_queue(queue);
 }
 
 _SOKOL_PRIVATE void _sapp_android_on_input_queue_destroyed(ANativeActivity* activity, AInputQueue* queue) {
     SOKOL_LOG("NativeActivity onInputQueueDestroyed()");
-    _sapp_android_msg_set_input_queue(&_sapp_android_state, NULL);
+    _sapp_android_msg_set_input_queue(NULL);
 }
 
 _SOKOL_PRIVATE void _sapp_android_on_config_changed(ANativeActivity* activity) {
@@ -6259,22 +6328,21 @@ _SOKOL_PRIVATE void _sapp_android_on_destroy(ANativeActivity* activity) {
      * _sapp_android_on_stop(), the crash disappears. Is this a bug in NativeActivity?
      */
     SOKOL_LOG("NativeActivity onDestroy()");
-    _sapp_android_state_t* state = &_sapp_android_state;
 
     /* send destroy msg */
-    pthread_mutex_lock(&state->pt.mutex);
-    _sapp_android_msg(state, _SOKOL_ANDROID_MSG_DESTROY);
-    while (!_sapp_android_state.is_thread_stopped) {
-        pthread_cond_wait(&state->pt.cond, &state->pt.mutex);
+    pthread_mutex_lock(&_sapp.android.pt.mutex);
+    _sapp_android_msg(_SOKOL_ANDROID_MSG_DESTROY);
+    while (!_sapp.android.is_thread_stopped) {
+        pthread_cond_wait(&_sapp.android.pt.cond, &_sapp.android.pt.mutex);
     }
-    pthread_mutex_unlock(&state->pt.mutex);
+    pthread_mutex_unlock(&_sapp.android.pt.mutex);
 
     /* clean up main thread */
-    pthread_cond_destroy(&state->pt.cond);
-    pthread_mutex_destroy(&state->pt.mutex);
+    pthread_cond_destroy(&_sapp.android.pt.cond);
+    pthread_mutex_destroy(&_sapp.android.pt.mutex);
 
-    close(state->pt.read_from_main_fd);
-    close(state->pt.write_from_main_fd);
+    close(_sapp.android.pt.read_from_main_fd);
+    close(_sapp.android.pt.write_from_main_fd);
 
     SOKOL_LOG("NativeActivity done");
 
@@ -6290,45 +6358,41 @@ void ANativeActivity_onCreate(ANativeActivity* activity, void* saved_state, size
     _sapp_init_state(&desc);
 
     /* start loop thread */
-    _sapp_android_state = (_sapp_android_state_t){0};
-    _sapp_android_state_t* state = &_sapp_android_state;
-
-    state->activity = activity;
+    _sapp.android.activity = activity;
 
     int pipe_fd[2];
     if (pipe(pipe_fd) != 0) {
         SOKOL_LOG("Could not create thread pipe");
         return;
     }
-    state->pt.read_from_main_fd = pipe_fd[0];
-    state->pt.write_from_main_fd = pipe_fd[1];
+    _sapp.android.pt.read_from_main_fd = pipe_fd[0];
+    _sapp.android.pt.write_from_main_fd = pipe_fd[1];
 
-    pthread_mutex_init(&state->pt.mutex, NULL);
-    pthread_cond_init(&state->pt.cond, NULL);
+    pthread_mutex_init(&_sapp.android.pt.mutex, NULL);
+    pthread_cond_init(&_sapp.android.pt.cond, NULL);
 
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    pthread_create(&state->pt.thread, &attr, _sapp_android_loop, state);
+    pthread_create(&_sapp.android.pt.thread, &attr, _sapp_android_loop, 0);
     pthread_attr_destroy(&attr);
 
     /* wait until main loop has started */
-    pthread_mutex_lock(&state->pt.mutex);
-    while (!state->is_thread_started) {
-        pthread_cond_wait(&state->pt.cond, &state->pt.mutex);
+    pthread_mutex_lock(&_sapp.android.pt.mutex);
+    while (!_sapp.android.is_thread_started) {
+        pthread_cond_wait(&_sapp.android.pt.cond, &_sapp.android.pt.mutex);
     }
-    pthread_mutex_unlock(&state->pt.mutex);
+    pthread_mutex_unlock(&_sapp.android.pt.mutex);
 
     /* send create msg */
-    pthread_mutex_lock(&state->pt.mutex);
-    _sapp_android_msg(state, _SOKOL_ANDROID_MSG_CREATE);
-    while (!state->has_created) {
-        pthread_cond_wait(&state->pt.cond, &state->pt.mutex);
+    pthread_mutex_lock(&_sapp.android.pt.mutex);
+    _sapp_android_msg(_SOKOL_ANDROID_MSG_CREATE);
+    while (!_sapp.android.has_created) {
+        pthread_cond_wait(&_sapp.android.pt.cond, &_sapp.android.pt.mutex);
     }
-    pthread_mutex_unlock(&state->pt.mutex);
+    pthread_mutex_unlock(&_sapp.android.pt.mutex);
 
     /* register for callbacks */
-    activity->instance = state;
     activity->callbacks->onStart = _sapp_android_on_start;
     activity->callbacks->onResume = _sapp_android_on_resume;
     activity->callbacks->onSaveInstanceState = _sapp_android_on_save_instance_state;
@@ -6355,82 +6419,6 @@ void ANativeActivity_onCreate(ANativeActivity* activity, void* saved_state, size
 
 /*== LINUX ==================================================================*/
 #if defined(_SAPP_LINUX)
-typedef XID GLXWindow;
-typedef XID GLXDrawable;
-typedef struct __GLXFBConfig* GLXFBConfig;
-typedef struct __GLXcontext* GLXContext;
-typedef void (*__GLXextproc)(void);
-
-typedef int (*PFNGLXGETFBCONFIGATTRIBPROC)(Display*,GLXFBConfig,int,int*);
-typedef const char* (*PFNGLXGETCLIENTSTRINGPROC)(Display*,int);
-typedef Bool (*PFNGLXQUERYEXTENSIONPROC)(Display*,int*,int*);
-typedef Bool (*PFNGLXQUERYVERSIONPROC)(Display*,int*,int*);
-typedef void (*PFNGLXDESTROYCONTEXTPROC)(Display*,GLXContext);
-typedef Bool (*PFNGLXMAKECURRENTPROC)(Display*,GLXDrawable,GLXContext);
-typedef void (*PFNGLXSWAPBUFFERSPROC)(Display*,GLXDrawable);
-typedef const char* (*PFNGLXQUERYEXTENSIONSSTRINGPROC)(Display*,int);
-typedef GLXFBConfig* (*PFNGLXGETFBCONFIGSPROC)(Display*,int,int*);
-typedef GLXContext (*PFNGLXCREATENEWCONTEXTPROC)(Display*,GLXFBConfig,int,GLXContext,Bool);
-typedef __GLXextproc (* PFNGLXGETPROCADDRESSPROC)(const GLubyte *procName);
-typedef void (*PFNGLXSWAPINTERVALEXTPROC)(Display*,GLXDrawable,int);
-typedef XVisualInfo* (*PFNGLXGETVISUALFROMFBCONFIGPROC)(Display*,GLXFBConfig);
-typedef GLXWindow (*PFNGLXCREATEWINDOWPROC)(Display*,GLXFBConfig,Window,const int*);
-typedef void (*PFNGLXDESTROYWINDOWPROC)(Display*,GLXWindow);
-
-typedef int (*PFNGLXSWAPINTERVALMESAPROC)(int);
-typedef GLXContext (*PFNGLXCREATECONTEXTATTRIBSARBPROC)(Display*,GLXFBConfig,GLXContext,Bool,const int*);
-
-static Display* _sapp_x11_display;
-static int _sapp_x11_screen;
-static Window _sapp_x11_root;
-static Colormap _sapp_x11_colormap;
-static Window _sapp_x11_window;
-static float _sapp_x11_dpi;
-static int _sapp_x11_window_state;
-static unsigned char _sapp_x11_error_code;
-static void* _sapp_glx_libgl;
-static int _sapp_glx_major;
-static int _sapp_glx_minor;
-static int _sapp_glx_eventbase;
-static int _sapp_glx_errorbase;
-static GLXContext _sapp_glx_ctx;
-static GLXWindow _sapp_glx_window;
-static Atom _sapp_x11_UTF8_STRING;
-static Atom _sapp_x11_WM_PROTOCOLS;
-static Atom _sapp_x11_WM_DELETE_WINDOW;
-static Atom _sapp_x11_WM_STATE;
-static Atom _sapp_x11_NET_WM_NAME;
-static Atom _sapp_x11_NET_WM_ICON_NAME;
-static Atom _sapp_x11_NET_WM_STATE;
-static Atom _sapp_x11_NET_WM_STATE_FULLSCREEN;
-// GLX 1.3 functions
-static PFNGLXGETFBCONFIGSPROC              _sapp_glx_GetFBConfigs;
-static PFNGLXGETFBCONFIGATTRIBPROC         _sapp_glx_GetFBConfigAttrib;
-static PFNGLXGETCLIENTSTRINGPROC           _sapp_glx_GetClientString;
-static PFNGLXQUERYEXTENSIONPROC            _sapp_glx_QueryExtension;
-static PFNGLXQUERYVERSIONPROC              _sapp_glx_QueryVersion;
-static PFNGLXDESTROYCONTEXTPROC            _sapp_glx_DestroyContext;
-static PFNGLXMAKECURRENTPROC               _sapp_glx_MakeCurrent;
-static PFNGLXSWAPBUFFERSPROC               _sapp_glx_SwapBuffers;
-static PFNGLXQUERYEXTENSIONSSTRINGPROC     _sapp_glx_QueryExtensionsString;
-static PFNGLXCREATENEWCONTEXTPROC          _sapp_glx_CreateNewContext;
-static PFNGLXGETVISUALFROMFBCONFIGPROC     _sapp_glx_GetVisualFromFBConfig;
-static PFNGLXCREATEWINDOWPROC              _sapp_glx_CreateWindow;
-static PFNGLXDESTROYWINDOWPROC             _sapp_glx_DestroyWindow;
-
-// GLX 1.4 and extension functions
-static PFNGLXGETPROCADDRESSPROC            _sapp_glx_GetProcAddress;
-static PFNGLXGETPROCADDRESSPROC            _sapp_glx_GetProcAddressARB;
-static PFNGLXSWAPINTERVALEXTPROC           _sapp_glx_SwapIntervalEXT;
-static PFNGLXSWAPINTERVALMESAPROC          _sapp_glx_SwapIntervalMESA;
-static PFNGLXCREATECONTEXTATTRIBSARBPROC   _sapp_glx_CreateContextAttribsARB;
-static bool _sapp_glx_EXT_swap_control;
-static bool _sapp_glx_MESA_swap_control;
-static bool _sapp_glx_ARB_multisample;
-static bool _sapp_glx_ARB_framebuffer_sRGB;
-static bool _sapp_glx_EXT_framebuffer_sRGB;
-static bool _sapp_glx_ARB_create_context;
-static bool _sapp_glx_ARB_create_context_profile;
 
 /* see GLFW's xkb_unicode.c */
 static const struct _sapp_x11_codepair {
@@ -7269,29 +7257,29 @@ static const struct _sapp_x11_codepair {
 
 _SOKOL_PRIVATE int _sapp_x11_error_handler(Display* display, XErrorEvent* event) {
     _SOKOL_UNUSED(display);
-    _sapp_x11_error_code = event->error_code;
+    _sapp.x11.error_code = event->error_code;
     return 0;
 }
 
 _SOKOL_PRIVATE void _sapp_x11_grab_error_handler(void) {
-    _sapp_x11_error_code = Success;
+    _sapp.x11.error_code = Success;
     XSetErrorHandler(_sapp_x11_error_handler);
 }
 
 _SOKOL_PRIVATE void _sapp_x11_release_error_handler(void) {
-    XSync(_sapp_x11_display, False);
+    XSync(_sapp.x11.display, False);
     XSetErrorHandler(NULL);
 }
 
 _SOKOL_PRIVATE void _sapp_x11_init_extensions(void) {
-    _sapp_x11_UTF8_STRING             = XInternAtom(_sapp_x11_display, "UTF8_STRING", False);
-    _sapp_x11_WM_PROTOCOLS            = XInternAtom(_sapp_x11_display, "WM_PROTOCOLS", False);
-    _sapp_x11_WM_DELETE_WINDOW        = XInternAtom(_sapp_x11_display, "WM_DELETE_WINDOW", False);
-    _sapp_x11_WM_STATE                = XInternAtom(_sapp_x11_display, "WM_STATE", False);
-    _sapp_x11_NET_WM_NAME             = XInternAtom(_sapp_x11_display, "_NET_WM_NAME", False);
-    _sapp_x11_NET_WM_ICON_NAME        = XInternAtom(_sapp_x11_display, "_NET_WM_ICON_NAME", False);
-    _sapp_x11_NET_WM_STATE            = XInternAtom(_sapp_x11_display, "_NET_WM_STATE", False);
-    _sapp_x11_NET_WM_STATE_FULLSCREEN = XInternAtom(_sapp_x11_display, "_NET_WM_STATE_FULLSCREEN", False);
+    _sapp.x11.UTF8_STRING             = XInternAtom(_sapp.x11.display, "UTF8_STRING", False);
+    _sapp.x11.WM_PROTOCOLS            = XInternAtom(_sapp.x11.display, "WM_PROTOCOLS", False);
+    _sapp.x11.WM_DELETE_WINDOW        = XInternAtom(_sapp.x11.display, "WM_DELETE_WINDOW", False);
+    _sapp.x11.WM_STATE                = XInternAtom(_sapp.x11.display, "WM_STATE", False);
+    _sapp.x11.NET_WM_NAME             = XInternAtom(_sapp.x11.display, "_NET_WM_NAME", False);
+    _sapp.x11.NET_WM_ICON_NAME        = XInternAtom(_sapp.x11.display, "_NET_WM_ICON_NAME", False);
+    _sapp.x11.NET_WM_STATE            = XInternAtom(_sapp.x11.display, "_NET_WM_STATE", False);
+    _sapp.x11.NET_WM_STATE_FULLSCREEN = XInternAtom(_sapp.x11.display, "_NET_WM_STATE_FULLSCREEN", False);
 }
 
 _SOKOL_PRIVATE void _sapp_x11_query_system_dpi(void) {
@@ -7299,14 +7287,15 @@ _SOKOL_PRIVATE void _sapp_x11_query_system_dpi(void) {
 
        NOTE: Default to the display-wide DPI as we don't currently have a policy
              for which monitor a window is considered to be on
-    _sapp_x11_dpi = DisplayWidth(_sapp_x11_display, _sapp_x11_screen) *
-        25.4f / DisplayWidthMM(_sapp_x11_display, _sapp_x11_screen);
+
+        _sapp.x11.dpi = DisplayWidth(_sapp.x11.display, _sapp.x11.screen) *
+                        25.4f / DisplayWidthMM(_sapp.x11.display, _sapp.x11.screen);
 
        NOTE: Basing the scale on Xft.dpi where available should provide the most
              consistent user experience (matches Qt, Gtk, etc), although not
              always the most accurate one
     */
-    char* rms = XResourceManagerString(_sapp_x11_display);
+    char* rms = XResourceManagerString(_sapp.x11.display);
     if (rms) {
         XrmDatabase db = XrmGetStringDatabase(rms);
         if (db) {
@@ -7314,7 +7303,7 @@ _SOKOL_PRIVATE void _sapp_x11_query_system_dpi(void) {
             char* type = NULL;
             if (XrmGetResource(db, "Xft.dpi", "Xft.Dpi", &type, &value)) {
                 if (type && strcmp(type, "String") == 0) {
-                    _sapp_x11_dpi = atof(value.addr);
+                    _sapp.x11.dpi = atof(value.addr);
                 }
             }
             XrmDestroyDatabase(db);
@@ -7352,96 +7341,89 @@ _SOKOL_PRIVATE bool _sapp_glx_extsupported(const char* ext, const char* extensio
 
 _SOKOL_PRIVATE void* _sapp_glx_getprocaddr(const char* procname)
 {
-    if (_sapp_glx_GetProcAddress) {
-        return (void*) _sapp_glx_GetProcAddress((const GLubyte*) procname);
+    if (_sapp.glx.GetProcAddress) {
+        return (void*) _sapp.glx.GetProcAddress((const GLubyte*) procname);
     }
-    else if (_sapp_glx_GetProcAddressARB) {
-        return (void*) _sapp_glx_GetProcAddressARB((const GLubyte*) procname);
+    else if (_sapp.glx.GetProcAddressARB) {
+        return (void*) _sapp.glx.GetProcAddressARB((const GLubyte*) procname);
     }
     else {
-        return dlsym(_sapp_glx_libgl, procname);
+        return dlsym(_sapp.glx.libgl, procname);
     }
 }
 
 _SOKOL_PRIVATE void _sapp_glx_init() {
     const char* sonames[] = { "libGL.so.1", "libGL.so", 0 };
     for (int i = 0; sonames[i]; i++) {
-        _sapp_glx_libgl = dlopen(sonames[i], RTLD_LAZY|RTLD_GLOBAL);
-        if (_sapp_glx_libgl) {
+        _sapp.glx.libgl = dlopen(sonames[i], RTLD_LAZY|RTLD_GLOBAL);
+        if (_sapp.glx.libgl) {
             break;
         }
     }
-    if (!_sapp_glx_libgl) {
+    if (!_sapp.glx.libgl) {
         _sapp_fail("GLX: failed to load libGL");
     }
-    _sapp_glx_GetFBConfigs          = (PFNGLXGETFBCONFIGSPROC)          dlsym(_sapp_glx_libgl, "glXGetFBConfigs");
-    _sapp_glx_GetFBConfigAttrib     = (PFNGLXGETFBCONFIGATTRIBPROC)     dlsym(_sapp_glx_libgl, "glXGetFBConfigAttrib");
-    _sapp_glx_GetClientString       = (PFNGLXGETCLIENTSTRINGPROC)       dlsym(_sapp_glx_libgl, "glXGetClientString");
-    _sapp_glx_QueryExtension        = (PFNGLXQUERYEXTENSIONPROC)        dlsym(_sapp_glx_libgl, "glXQueryExtension");
-    _sapp_glx_QueryVersion          = (PFNGLXQUERYVERSIONPROC)          dlsym(_sapp_glx_libgl, "glXQueryVersion");
-    _sapp_glx_DestroyContext        = (PFNGLXDESTROYCONTEXTPROC)        dlsym(_sapp_glx_libgl, "glXDestroyContext");
-    _sapp_glx_MakeCurrent           = (PFNGLXMAKECURRENTPROC)           dlsym(_sapp_glx_libgl, "glXMakeCurrent");
-    _sapp_glx_SwapBuffers           = (PFNGLXSWAPBUFFERSPROC)           dlsym(_sapp_glx_libgl, "glXSwapBuffers");
-    _sapp_glx_QueryExtensionsString = (PFNGLXQUERYEXTENSIONSSTRINGPROC) dlsym(_sapp_glx_libgl, "glXQueryExtensionsString");
-    _sapp_glx_CreateNewContext      = (PFNGLXCREATENEWCONTEXTPROC)      dlsym(_sapp_glx_libgl, "glXCreateNewContext");
-    _sapp_glx_CreateWindow          = (PFNGLXCREATEWINDOWPROC)          dlsym(_sapp_glx_libgl, "glXCreateWindow");
-    _sapp_glx_DestroyWindow         = (PFNGLXDESTROYWINDOWPROC)         dlsym(_sapp_glx_libgl, "glXDestroyWindow");
-    _sapp_glx_GetProcAddress        = (PFNGLXGETPROCADDRESSPROC)        dlsym(_sapp_glx_libgl, "glXGetProcAddress");
-    _sapp_glx_GetProcAddressARB     = (PFNGLXGETPROCADDRESSPROC)        dlsym(_sapp_glx_libgl, "glXGetProcAddressARB");
-    _sapp_glx_GetVisualFromFBConfig = (PFNGLXGETVISUALFROMFBCONFIGPROC) dlsym(_sapp_glx_libgl, "glXGetVisualFromFBConfig");
-    if (!_sapp_glx_GetFBConfigs ||
-        !_sapp_glx_GetFBConfigAttrib ||
-        !_sapp_glx_GetClientString ||
-        !_sapp_glx_QueryExtension ||
-        !_sapp_glx_QueryVersion ||
-        !_sapp_glx_DestroyContext ||
-        !_sapp_glx_MakeCurrent ||
-        !_sapp_glx_SwapBuffers ||
-        !_sapp_glx_QueryExtensionsString ||
-        !_sapp_glx_CreateNewContext ||
-        !_sapp_glx_CreateWindow ||
-        !_sapp_glx_DestroyWindow ||
-        !_sapp_glx_GetProcAddress ||
-        !_sapp_glx_GetProcAddressARB ||
-        !_sapp_glx_GetVisualFromFBConfig)
+    _sapp.glx.GetFBConfigs          = (PFNGLXGETFBCONFIGSPROC)          dlsym(_sapp.glx.libgl, "glXGetFBConfigs");
+    _sapp.glx.GetFBConfigAttrib     = (PFNGLXGETFBCONFIGATTRIBPROC)     dlsym(_sapp.glx.libgl, "glXGetFBConfigAttrib");
+    _sapp.glx.GetClientString       = (PFNGLXGETCLIENTSTRINGPROC)       dlsym(_sapp.glx.libgl, "glXGetClientString");
+    _sapp.glx.QueryExtension        = (PFNGLXQUERYEXTENSIONPROC)        dlsym(_sapp.glx.libgl, "glXQueryExtension");
+    _sapp.glx.QueryVersion          = (PFNGLXQUERYVERSIONPROC)          dlsym(_sapp.glx.libgl, "glXQueryVersion");
+    _sapp.glx.DestroyContext        = (PFNGLXDESTROYCONTEXTPROC)        dlsym(_sapp.glx.libgl, "glXDestroyContext");
+    _sapp.glx.MakeCurrent           = (PFNGLXMAKECURRENTPROC)           dlsym(_sapp.glx.libgl, "glXMakeCurrent");
+    _sapp.glx.SwapBuffers           = (PFNGLXSWAPBUFFERSPROC)           dlsym(_sapp.glx.libgl, "glXSwapBuffers");
+    _sapp.glx.QueryExtensionsString = (PFNGLXQUERYEXTENSIONSSTRINGPROC) dlsym(_sapp.glx.libgl, "glXQueryExtensionsString");
+    _sapp.glx.CreateWindow          = (PFNGLXCREATEWINDOWPROC)          dlsym(_sapp.glx.libgl, "glXCreateWindow");
+    _sapp.glx.DestroyWindow         = (PFNGLXDESTROYWINDOWPROC)         dlsym(_sapp.glx.libgl, "glXDestroyWindow");
+    _sapp.glx.GetProcAddress        = (PFNGLXGETPROCADDRESSPROC)        dlsym(_sapp.glx.libgl, "glXGetProcAddress");
+    _sapp.glx.GetProcAddressARB     = (PFNGLXGETPROCADDRESSPROC)        dlsym(_sapp.glx.libgl, "glXGetProcAddressARB");
+    _sapp.glx.GetVisualFromFBConfig = (PFNGLXGETVISUALFROMFBCONFIGPROC) dlsym(_sapp.glx.libgl, "glXGetVisualFromFBConfig");
+    if (!_sapp.glx.GetFBConfigs ||
+        !_sapp.glx.GetFBConfigAttrib ||
+        !_sapp.glx.GetClientString ||
+        !_sapp.glx.QueryExtension ||
+        !_sapp.glx.QueryVersion ||
+        !_sapp.glx.DestroyContext ||
+        !_sapp.glx.MakeCurrent ||
+        !_sapp.glx.SwapBuffers ||
+        !_sapp.glx.QueryExtensionsString ||
+        !_sapp.glx.CreateWindow ||
+        !_sapp.glx.DestroyWindow ||
+        !_sapp.glx.GetProcAddress ||
+        !_sapp.glx.GetProcAddressARB ||
+        !_sapp.glx.GetVisualFromFBConfig)
     {
         _sapp_fail("GLX: failed to load required entry points");
     }
 
-    if (!_sapp_glx_QueryExtension(_sapp_x11_display,
-                           &_sapp_glx_errorbase,
-                           &_sapp_glx_eventbase))
-    {
+    if (!_sapp.glx.QueryExtension(_sapp.x11.display, &_sapp.glx.errorbase, &_sapp.glx.eventbase)) {
         _sapp_fail("GLX: GLX extension not found");
     }
-    if (!_sapp_glx_QueryVersion(_sapp_x11_display, &_sapp_glx_major, &_sapp_glx_minor)) {
+    if (!_sapp.glx.QueryVersion(_sapp.x11.display, &_sapp.glx.major, &_sapp.glx.minor)) {
         _sapp_fail("GLX: Failed to query GLX version");
     }
-    if (_sapp_glx_major == 1 && _sapp_glx_minor < 3) {
+    if (_sapp.glx.major == 1 && _sapp.glx.minor < 3) {
         _sapp_fail("GLX: GLX version 1.3 is required");
     }
-    const char* exts = _sapp_glx_QueryExtensionsString(_sapp_x11_display, _sapp_x11_screen);
+    const char* exts = _sapp.glx.QueryExtensionsString(_sapp.x11.display, _sapp.x11.screen);
     if (_sapp_glx_extsupported("GLX_EXT_swap_control", exts)) {
-        _sapp_glx_SwapIntervalEXT = (PFNGLXSWAPINTERVALEXTPROC) _sapp_glx_getprocaddr("glXSwapIntervalEXT");
-        _sapp_glx_EXT_swap_control = 0 != _sapp_glx_SwapIntervalEXT;
+        _sapp.glx.SwapIntervalEXT = (PFNGLXSWAPINTERVALEXTPROC) _sapp_glx_getprocaddr("glXSwapIntervalEXT");
+        _sapp.glx.EXT_swap_control = 0 != _sapp.glx.SwapIntervalEXT;
     }
     if (_sapp_glx_extsupported("GLX_MESA_swap_control", exts)) {
-        _sapp_glx_SwapIntervalMESA = (PFNGLXSWAPINTERVALMESAPROC) _sapp_glx_getprocaddr("glXSwapIntervalMESA");
-        _sapp_glx_MESA_swap_control = 0 != _sapp_glx_SwapIntervalMESA;
+        _sapp.glx.SwapIntervalMESA = (PFNGLXSWAPINTERVALMESAPROC) _sapp_glx_getprocaddr("glXSwapIntervalMESA");
+        _sapp.glx.MESA_swap_control = 0 != _sapp.glx.SwapIntervalMESA;
     }
-    _sapp_glx_ARB_multisample = _sapp_glx_extsupported("GLX_ARB_multisample", exts);
-    _sapp_glx_ARB_framebuffer_sRGB = _sapp_glx_extsupported("GLX_ARB_framebuffer_sRGB", exts);
-    _sapp_glx_EXT_framebuffer_sRGB = _sapp_glx_extsupported("GLX_EXT_framebuffer_sRGB", exts);
+    _sapp.glx.ARB_multisample = _sapp_glx_extsupported("GLX_ARB_multisample", exts);
     if (_sapp_glx_extsupported("GLX_ARB_create_context", exts)) {
-        _sapp_glx_CreateContextAttribsARB = (PFNGLXCREATECONTEXTATTRIBSARBPROC) _sapp_glx_getprocaddr("glXCreateContextAttribsARB");
-        _sapp_glx_ARB_create_context = 0 != _sapp_glx_CreateContextAttribsARB;
+        _sapp.glx.CreateContextAttribsARB = (PFNGLXCREATECONTEXTATTRIBSARBPROC) _sapp_glx_getprocaddr("glXCreateContextAttribsARB");
+        _sapp.glx.ARB_create_context = 0 != _sapp.glx.CreateContextAttribsARB;
     }
-    _sapp_glx_ARB_create_context_profile = _sapp_glx_extsupported("GLX_ARB_create_context_profile", exts);
+    _sapp.glx.ARB_create_context_profile = _sapp_glx_extsupported("GLX_ARB_create_context_profile", exts);
 }
 
 _SOKOL_PRIVATE int _sapp_glx_attrib(GLXFBConfig fbconfig, int attrib) {
     int value;
-    _sapp_glx_GetFBConfigAttrib(_sapp_x11_display, fbconfig, attrib, &value);
+    _sapp.glx.GetFBConfigAttrib(_sapp.x11.display, fbconfig, attrib, &value);
     return value;
 }
 
@@ -7456,12 +7438,12 @@ _SOKOL_PRIVATE GLXFBConfig _sapp_glx_choosefbconfig() {
     /* HACK: This is a (hopefully temporary) workaround for Chromium
            (VirtualBox GL) not setting the window bit on any GLXFBConfigs
     */
-    vendor = _sapp_glx_GetClientString(_sapp_x11_display, GLX_VENDOR);
+    vendor = _sapp.glx.GetClientString(_sapp.x11.display, GLX_VENDOR);
     if (vendor && strcmp(vendor, "Chromium") == 0) {
         trust_window_bit = false;
     }
 
-    native_configs = _sapp_glx_GetFBConfigs(_sapp_x11_display, _sapp_x11_screen, &native_count);
+    native_configs = _sapp.glx.GetFBConfigs(_sapp.x11.display, _sapp.x11.screen, &native_count);
     if (!native_configs || !native_count) {
         _sapp_fail("GLX: No GLXFBConfigs returned");
     }
@@ -7492,7 +7474,7 @@ _SOKOL_PRIVATE GLXFBConfig _sapp_glx_choosefbconfig() {
         if (_sapp_glx_attrib(n, GLX_DOUBLEBUFFER)) {
             u->doublebuffer = true;
         }
-        if (_sapp_glx_ARB_multisample) {
+        if (_sapp.glx.ARB_multisample) {
             u->samples = _sapp_glx_attrib(n, GLX_SAMPLES);
         }
         u->handle = (uintptr_t) n;
@@ -7523,7 +7505,7 @@ _SOKOL_PRIVATE void _sapp_glx_choose_visual(Visual** visual, int* depth) {
     if (0 == native) {
         _sapp_fail("GLX: Failed to find a suitable GLXFBConfig");
     }
-    XVisualInfo* result = _sapp_glx_GetVisualFromFBConfig(_sapp_x11_display, native);
+    XVisualInfo* result = _sapp.glx.GetVisualFromFBConfig(_sapp.x11.display, native);
     if (!result) {
         _sapp_fail("GLX: Failed to retrieve Visual for GLXFBConfig");
     }
@@ -7537,7 +7519,7 @@ _SOKOL_PRIVATE void _sapp_glx_create_context(void) {
     if (0 == native){
         _sapp_fail("GLX: Failed to find a suitable GLXFBConfig (2)");
     }
-    if (!(_sapp_glx_ARB_create_context && _sapp_glx_ARB_create_context_profile)) {
+    if (!(_sapp.glx.ARB_create_context && _sapp.glx.ARB_create_context_profile)) {
         _sapp_fail("GLX: ARB_create_context and ARB_create_context_profile required");
     }
     _sapp_x11_grab_error_handler();
@@ -7548,43 +7530,43 @@ _SOKOL_PRIVATE void _sapp_glx_create_context(void) {
         GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
         0, 0
     };
-    _sapp_glx_ctx = _sapp_glx_CreateContextAttribsARB(_sapp_x11_display, native, NULL, True, attribs);
-    if (!_sapp_glx_ctx) {
+    _sapp.glx.ctx = _sapp.glx.CreateContextAttribsARB(_sapp.x11.display, native, NULL, True, attribs);
+    if (!_sapp.glx.ctx) {
         _sapp_fail("GLX: failed to create GL context");
     }
     _sapp_x11_release_error_handler();
-    _sapp_glx_window = _sapp_glx_CreateWindow(_sapp_x11_display, native, _sapp_x11_window, NULL);
-    if (!_sapp_glx_window) {
+    _sapp.glx.window = _sapp.glx.CreateWindow(_sapp.x11.display, native, _sapp.x11.window, NULL);
+    if (!_sapp.glx.window) {
         _sapp_fail("GLX: failed to create window");
     }
 }
 
 _SOKOL_PRIVATE void _sapp_glx_destroy_context(void) {
-    if (_sapp_glx_window) {
-        _sapp_glx_DestroyWindow(_sapp_x11_display, _sapp_glx_window);
-        _sapp_glx_window = 0;
+    if (_sapp.glx.window) {
+        _sapp.glx.DestroyWindow(_sapp.x11.display, _sapp.glx.window);
+        _sapp.glx.window = 0;
     }
-    if (_sapp_glx_ctx) {
-        _sapp_glx_DestroyContext(_sapp_x11_display, _sapp_glx_ctx);
-        _sapp_glx_ctx = 0;
+    if (_sapp.glx.ctx) {
+        _sapp.glx.DestroyContext(_sapp.x11.display, _sapp.glx.ctx);
+        _sapp.glx.ctx = 0;
     }
 }
 
 _SOKOL_PRIVATE void _sapp_glx_make_current(void) {
-    _sapp_glx_MakeCurrent(_sapp_x11_display, _sapp_glx_window, _sapp_glx_ctx);
+    _sapp.glx.MakeCurrent(_sapp.x11.display, _sapp.glx.window, _sapp.glx.ctx);
 }
 
 _SOKOL_PRIVATE void _sapp_glx_swap_buffers(void) {
-    _sapp_glx_SwapBuffers(_sapp_x11_display, _sapp_glx_window);
+    _sapp.glx.SwapBuffers(_sapp.x11.display, _sapp.glx.window);
 }
 
 _SOKOL_PRIVATE void _sapp_glx_swapinterval(int interval) {
     _sapp_glx_make_current();
-    if (_sapp_glx_EXT_swap_control) {
-        _sapp_glx_SwapIntervalEXT(_sapp_x11_display, _sapp_glx_window, interval);
+    if (_sapp.glx.EXT_swap_control) {
+        _sapp.glx.SwapIntervalEXT(_sapp.x11.display, _sapp.glx.window, interval);
     }
-    else if (_sapp_glx_MESA_swap_control) {
-        _sapp_glx_SwapIntervalMESA(interval);
+    else if (_sapp.glx.MESA_swap_control) {
+        _sapp.glx.SwapIntervalMESA(interval);
     }
 }
 
@@ -7593,7 +7575,7 @@ _SOKOL_PRIVATE void _sapp_x11_send_event(Atom type, int a, int b, int c, int d, 
     memset(&event, 0, sizeof(event));
 
     event.type = ClientMessage;
-    event.xclient.window = _sapp_x11_window;
+    event.xclient.window = _sapp.x11.window;
     event.xclient.format = 32;
     event.xclient.message_type = type;
     event.xclient.data.l[0] = a;
@@ -7602,7 +7584,7 @@ _SOKOL_PRIVATE void _sapp_x11_send_event(Atom type, int a, int b, int c, int d, 
     event.xclient.data.l[3] = d;
     event.xclient.data.l[4] = e;
 
-    XSendEvent(_sapp_x11_display, _sapp_x11_root,
+    XSendEvent(_sapp.x11.display, _sapp.x11.root,
                False,
                SubstructureNotifyMask | SubstructureRedirectMask,
                &event);
@@ -7610,7 +7592,7 @@ _SOKOL_PRIVATE void _sapp_x11_send_event(Atom type, int a, int b, int c, int d, 
 
 _SOKOL_PRIVATE void _sapp_x11_query_window_size(void) {
     XWindowAttributes attribs;
-    XGetWindowAttributes(_sapp_x11_display, _sapp_x11_window, &attribs);
+    XGetWindowAttributes(_sapp.x11.display, _sapp.x11.window, &attribs);
     _sapp.window_width = attribs.width;
     _sapp.window_height = attribs.height;
     _sapp.framebuffer_width = _sapp.window_width;
@@ -7619,23 +7601,23 @@ _SOKOL_PRIVATE void _sapp_x11_query_window_size(void) {
 
 _SOKOL_PRIVATE void _sapp_x11_set_fullscreen(bool enable) {
     /* NOTE: this function must be called after XMapWindow (which happens in _sapp_x11_show_window()) */
-    if (_sapp_x11_NET_WM_STATE && _sapp_x11_NET_WM_STATE_FULLSCREEN) {
+    if (_sapp.x11.NET_WM_STATE && _sapp.x11.NET_WM_STATE_FULLSCREEN) {
         if (enable) {
             const int _NET_WM_STATE_ADD = 1;
-            _sapp_x11_send_event(_sapp_x11_NET_WM_STATE,
+            _sapp_x11_send_event(_sapp.x11.NET_WM_STATE,
                                 _NET_WM_STATE_ADD,
-                                _sapp_x11_NET_WM_STATE_FULLSCREEN,
+                                _sapp.x11.NET_WM_STATE_FULLSCREEN,
                                 0, 1, 0);
         }
         else {
             const int _NET_WM_STATE_REMOVE = 0;
-            _sapp_x11_send_event(_sapp_x11_NET_WM_STATE,
+            _sapp_x11_send_event(_sapp.x11.NET_WM_STATE,
                                 _NET_WM_STATE_REMOVE,
-                                _sapp_x11_NET_WM_STATE_FULLSCREEN,
+                                _sapp.x11.NET_WM_STATE_FULLSCREEN,
                                 0, 1, 0);
         }
     }
-    XFlush(_sapp_x11_display);
+    XFlush(_sapp.x11.display);
 }
 
 _SOKOL_PRIVATE void _sapp_x11_toggle_fullscreen(void) {
@@ -7645,37 +7627,37 @@ _SOKOL_PRIVATE void _sapp_x11_toggle_fullscreen(void) {
 }
 
 _SOKOL_PRIVATE void _sapp_x11_update_window_title(void) {
-    Xutf8SetWMProperties(_sapp_x11_display,
-        _sapp_x11_window,
+    Xutf8SetWMProperties(_sapp.x11.display,
+        _sapp.x11.window,
         _sapp.window_title, _sapp.window_title,
         NULL, 0, NULL, NULL, NULL);
-    XChangeProperty(_sapp_x11_display, _sapp_x11_window,
-        _sapp_x11_NET_WM_NAME, _sapp_x11_UTF8_STRING, 8,
+    XChangeProperty(_sapp.x11.display, _sapp.x11.window,
+        _sapp.x11.NET_WM_NAME, _sapp.x11.UTF8_STRING, 8,
         PropModeReplace,
         (unsigned char*)_sapp.window_title,
         strlen(_sapp.window_title));
-    XChangeProperty(_sapp_x11_display, _sapp_x11_window,
-        _sapp_x11_NET_WM_ICON_NAME, _sapp_x11_UTF8_STRING, 8,
+    XChangeProperty(_sapp.x11.display, _sapp.x11.window,
+        _sapp.x11.NET_WM_ICON_NAME, _sapp.x11.UTF8_STRING, 8,
         PropModeReplace,
         (unsigned char*)_sapp.window_title,
         strlen(_sapp.window_title));
-    XFlush(_sapp_x11_display);
+    XFlush(_sapp.x11.display);
 }
 
 _SOKOL_PRIVATE void _sapp_x11_create_window(Visual* visual, int depth) {
-    _sapp_x11_colormap = XCreateColormap(_sapp_x11_display, _sapp_x11_root, visual, AllocNone);
+    _sapp.x11.colormap = XCreateColormap(_sapp.x11.display, _sapp.x11.root, visual, AllocNone);
     XSetWindowAttributes wa;
     memset(&wa, 0, sizeof(wa));
     const uint32_t wamask = CWBorderPixel | CWColormap | CWEventMask;
-    wa.colormap = _sapp_x11_colormap;
+    wa.colormap = _sapp.x11.colormap;
     wa.border_pixel = 0;
     wa.event_mask = StructureNotifyMask | KeyPressMask | KeyReleaseMask |
                     PointerMotionMask | ButtonPressMask | ButtonReleaseMask |
                     ExposureMask | FocusChangeMask | VisibilityChangeMask |
                     EnterWindowMask | LeaveWindowMask | PropertyChangeMask;
     _sapp_x11_grab_error_handler();
-    _sapp_x11_window = XCreateWindow(_sapp_x11_display,
-                                     _sapp_x11_root,
+    _sapp.x11.window = XCreateWindow(_sapp.x11.display,
+                                     _sapp.x11.root,
                                      0, 0,
                                      _sapp.window_width,
                                      _sapp.window_height,
@@ -7686,61 +7668,61 @@ _SOKOL_PRIVATE void _sapp_x11_create_window(Visual* visual, int depth) {
                                      wamask,
                                      &wa);
     _sapp_x11_release_error_handler();
-    if (!_sapp_x11_window) {
+    if (!_sapp.x11.window) {
         _sapp_fail("X11: Failed to create window");
     }
     Atom protocols[] = {
-        _sapp_x11_WM_DELETE_WINDOW
+        _sapp.x11.WM_DELETE_WINDOW
     };
-    XSetWMProtocols(_sapp_x11_display, _sapp_x11_window, protocols, 1);
+    XSetWMProtocols(_sapp.x11.display, _sapp.x11.window, protocols, 1);
 
     XSizeHints* hints = XAllocSizeHints();
     hints->flags |= PWinGravity;
     hints->win_gravity = StaticGravity;
-    XSetWMNormalHints(_sapp_x11_display, _sapp_x11_window, hints);
+    XSetWMNormalHints(_sapp.x11.display, _sapp.x11.window, hints);
     XFree(hints);
 
     _sapp_x11_update_window_title();
 }
 
 _SOKOL_PRIVATE void _sapp_x11_destroy_window(void) {
-    if (_sapp_x11_window) {
-        XUnmapWindow(_sapp_x11_display, _sapp_x11_window);
-        XDestroyWindow(_sapp_x11_display, _sapp_x11_window);
-        _sapp_x11_window = 0;
+    if (_sapp.x11.window) {
+        XUnmapWindow(_sapp.x11.display, _sapp.x11.window);
+        XDestroyWindow(_sapp.x11.display, _sapp.x11.window);
+        _sapp.x11.window = 0;
     }
-    if (_sapp_x11_colormap) {
-        XFreeColormap(_sapp_x11_display, _sapp_x11_colormap);
-        _sapp_x11_colormap = 0;
+    if (_sapp.x11.colormap) {
+        XFreeColormap(_sapp.x11.display, _sapp.x11.colormap);
+        _sapp.x11.colormap = 0;
     }
-    XFlush(_sapp_x11_display);
+    XFlush(_sapp.x11.display);
 }
 
 _SOKOL_PRIVATE bool _sapp_x11_window_visible(void) {
     XWindowAttributes wa;
-    XGetWindowAttributes(_sapp_x11_display, _sapp_x11_window, &wa);
+    XGetWindowAttributes(_sapp.x11.display, _sapp.x11.window, &wa);
     return wa.map_state == IsViewable;
 }
 
 _SOKOL_PRIVATE void _sapp_x11_show_window(void) {
     if (!_sapp_x11_window_visible()) {
-        XMapWindow(_sapp_x11_display, _sapp_x11_window);
-        XRaiseWindow(_sapp_x11_display, _sapp_x11_window);
-        XFlush(_sapp_x11_display);
+        XMapWindow(_sapp.x11.display, _sapp.x11.window);
+        XRaiseWindow(_sapp.x11.display, _sapp.x11.window);
+        XFlush(_sapp.x11.display);
     }
 }
 
 _SOKOL_PRIVATE void _sapp_x11_hide_window(void) {
-    XUnmapWindow(_sapp_x11_display, _sapp_x11_window);
-    XFlush(_sapp_x11_display);
+    XUnmapWindow(_sapp.x11.display, _sapp.x11.window);
+    XFlush(_sapp.x11.display);
 }
 
 _SOKOL_PRIVATE unsigned long _sapp_x11_get_window_property(Atom property, Atom type, unsigned char** value) {
     Atom actualType;
     int actualFormat;
     unsigned long itemCount, bytesAfter;
-    XGetWindowProperty(_sapp_x11_display,
-                       _sapp_x11_window,
+    XGetWindowProperty(_sapp.x11.display,
+                       _sapp.x11.window,
                        property,
                        0,
                        LONG_MAX,
@@ -7761,7 +7743,7 @@ _SOKOL_PRIVATE int _sapp_x11_get_window_state(void) {
         Window icon;
     } *state = NULL;
 
-    if (_sapp_x11_get_window_property(_sapp_x11_WM_STATE, _sapp_x11_WM_STATE, (unsigned char**)&state) >= 2) {
+    if (_sapp_x11_get_window_property(_sapp.x11.WM_STATE, _sapp.x11.WM_STATE, (unsigned char**)&state) >= 2) {
         result = state->state;
     }
     if (state) {
@@ -7855,7 +7837,7 @@ _SOKOL_PRIVATE void _sapp_x11_char_event(uint32_t chr, bool repeat, uint32_t mod
 
 _SOKOL_PRIVATE sapp_keycode _sapp_x11_translate_key(int scancode) {
     int dummy;
-    KeySym* keysyms = XGetKeyboardMapping(_sapp_x11_display, scancode, 1, &dummy);
+    KeySym* keysyms = XGetKeyboardMapping(_sapp.x11.display, scancode, 1, &dummy);
     SOKOL_ASSERT(keysyms);
     KeySym keysym = keysyms[0];
     XFree(keysyms);
@@ -8108,10 +8090,10 @@ _SOKOL_PRIVATE void _sapp_x11_process_event(XEvent* event) {
             break;
         case PropertyNotify:
             if (event->xproperty.state == PropertyNewValue) {
-                if (event->xproperty.atom == _sapp_x11_WM_STATE) {
+                if (event->xproperty.atom == _sapp.x11.WM_STATE) {
                     const int state = _sapp_x11_get_window_state();
-                    if (state != _sapp_x11_window_state) {
-                        _sapp_x11_window_state = state;
+                    if (state != _sapp.x11.window_state) {
+                        _sapp.x11.window_state = state;
                         if (state == IconicState) {
                             _sapp_x11_app_event(SAPP_EVENTTYPE_ICONIFIED);
                         }
@@ -8123,9 +8105,9 @@ _SOKOL_PRIVATE void _sapp_x11_process_event(XEvent* event) {
             }
             break;
         case ClientMessage:
-            if (event->xclient.message_type == _sapp_x11_WM_PROTOCOLS) {
+            if (event->xclient.message_type == _sapp.x11.WM_PROTOCOLS) {
                 const Atom protocol = event->xclient.data.l[0];
-                if (protocol == _sapp_x11_WM_DELETE_WINDOW) {
+                if (protocol == _sapp.x11.WM_DELETE_WINDOW) {
                     _sapp.quit_requested = true;
                 }
             }
@@ -8137,19 +8119,19 @@ _SOKOL_PRIVATE void _sapp_x11_process_event(XEvent* event) {
 
 _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
     _sapp_init_state(desc);
-    _sapp_x11_window_state = NormalState;
+    _sapp.x11.window_state = NormalState;
 
     XInitThreads();
     XrmInitialize();
-    _sapp_x11_display = XOpenDisplay(NULL);
-    if (!_sapp_x11_display) {
+    _sapp.x11.display = XOpenDisplay(NULL);
+    if (!_sapp.x11.display) {
         _sapp_fail("XOpenDisplay() failed!\n");
     }
-    _sapp_x11_screen = DefaultScreen(_sapp_x11_display);
-    _sapp_x11_root = DefaultRootWindow(_sapp_x11_display);
-    XkbSetDetectableAutoRepeat(_sapp_x11_display, true, NULL);
+    _sapp.x11.screen = DefaultScreen(_sapp.x11.display);
+    _sapp.x11.root = DefaultRootWindow(_sapp.x11.display);
+    XkbSetDetectableAutoRepeat(_sapp.x11.display, true, NULL);
     _sapp_x11_query_system_dpi();
-    _sapp.dpi_scale = _sapp_x11_dpi / 96.0f;
+    _sapp.dpi_scale = _sapp.x11.dpi / 96.0f;
     _sapp_x11_init_extensions();
     _sapp_glx_init();
     Visual* visual = 0;
@@ -8164,18 +8146,18 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
     }
     _sapp_x11_query_window_size();
     _sapp_glx_swapinterval(_sapp.swap_interval);
-    XFlush(_sapp_x11_display);
+    XFlush(_sapp.x11.display);
     while (!_sapp.quit_ordered) {
         _sapp_glx_make_current();
-        int count = XPending(_sapp_x11_display);
+        int count = XPending(_sapp.x11.display);
         while (count--) {
             XEvent event;
-            XNextEvent(_sapp_x11_display, &event);
+            XNextEvent(_sapp.x11.display, &event);
             _sapp_x11_process_event(&event);
         }
         _sapp_frame();
         _sapp_glx_swap_buffers();
-        XFlush(_sapp_x11_display);
+        XFlush(_sapp.x11.display);
         /* handle quit-requested, either from window or from sapp_request_quit() */
         if (_sapp.quit_requested && !_sapp.quit_ordered) {
             /* give user code a chance to intervene */
@@ -8189,7 +8171,7 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
     _sapp_call_cleanup();
     _sapp_glx_destroy_context();
     _sapp_x11_destroy_window();
-    XCloseDisplay(_sapp_x11_display);
+    XCloseDisplay(_sapp.x11.display);
     _sapp_discard_state();
 }
 
@@ -8619,7 +8601,7 @@ SOKOL_API_IMPL const void* sapp_wgpu_get_depth_stencil_view(void) {
 SOKOL_API_IMPL const void* sapp_android_get_native_activity(void) {
     SOKOL_ASSERT(_sapp.valid);
     #if defined(_SAPP_ANDROID)
-        return (void*)_sapp_android_state.activity;
+        return (void*)_sapp.android.activity;
     #else
         return 0;
     #endif
