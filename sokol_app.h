@@ -1325,21 +1325,23 @@ typedef struct {
 /*== EMSCRIPTEN DECLARATIONS =================================================*/
 #if defined(_SAPP_EMSCRIPTEN)
 typedef struct {
+    int state;
+    WGPUDevice device;
+    WGPUSwapChain swapchain;
+    WGPUTextureFormat render_format;
+    WGPUTexture msaa_tex;
+    WGPUTexture depth_stencil_tex;
+    WGPUTextureView swapchain_view;
+    WGPUTextureView msaa_view;
+    WGPUTextureView depth_stencil_view;
+} _sapp_wgpu_t;
+
+typedef struct {
     bool textfield_created;
     bool wants_show_keyboard;
     bool wants_hide_keyboard;
     #if defined(SOKOL_WGPU)
-    struct {
-        int state;
-        WGPUDevice device;
-        WGPUSwapChain swapchain;
-        WGPUTextureFormat render_format;
-        WGPUTexture msaa_tex;
-        WGPUTexture depth_stencil_tex;
-        WGPUTextureView swapchain_view;
-        WGPUTextureView msaa_view;
-        WGPUTextureView depth_stencil_view;
-    } wgpu;
+    _sapp_wgpu_t wgpu;
     #endif
 } _sapp_emsc_t;
 #endif // _SAPP_EMSCROPTEN
@@ -1362,24 +1364,19 @@ typedef enum MONITOR_DPI_TYPE {
 } MONITOR_DPI_TYPE;
 #endif /*DPI_ENUMS_DECLARED*/
 
-typedef BOOL(WINAPI* SETPROCESSDPIAWARE_T)(void);
-typedef HRESULT(WINAPI* SETPROCESSDPIAWARENESS_T)(PROCESS_DPI_AWARENESS);
-typedef HRESULT(WINAPI* GETDPIFORMONITOR_T)(HMONITOR, MONITOR_DPI_TYPE, UINT*, UINT*);
+typedef struct {
+    bool aware;
+    float content_scale;
+    float window_scale;
+    float mouse_scale;
+} _sapp_win32_dpi_t;
 
 typedef struct {
     HWND hwnd;
     HDC dc;
     bool in_create_window;
     bool iconified;
-    struct {
-        bool aware;
-        float content_scale;
-        float window_scale;
-        float mouse_scale;
-        SETPROCESSDPIAWARE_T setprocessdpiaware;
-        SETPROCESSDPIAWARENESS_T setprocessdpiawareness;
-        GETDPIFORMONITOR_T getdpiformonitor;
-    } dpi;
+    _sapp_win32_dpi_t dpi;
 } _sapp_win32_t;
 
 #if defined(SOKOL_D3D11)
@@ -4821,7 +4818,7 @@ _SOKOL_PRIVATE int _sapp_wgl_find_pixel_format(void) {
         if (_sapp_wgl_attrib(n, WGL_DOUBLE_BUFFER_ARB)) {
             u->doublebuffer = true;
         }
-        if (_sapp.arb.multisample) {
+        if (_sapp.wgl.arb_multisample) {
             u->samples = _sapp_wgl_attrib(n, WGL_SAMPLES_ARB);
         }
         u->handle = n;
@@ -5470,19 +5467,24 @@ _SOKOL_PRIVATE void _sapp_win32_unregister_class(void) {
 }
 
 _SOKOL_PRIVATE void _sapp_win32_init_dpi(void) {
-    SOKOL_ASSERT(0 == _sapp.win32.dpi.setprocessdpiaware);
-    SOKOL_ASSERT(0 == _sapp.win32.dpi.setprocessdpiawareness);
-    SOKOL_ASSERT(0 == _sapp.win32.dpi.getdpiformonitor);
+    
+    typedef BOOL(WINAPI * SETPROCESSDPIAWARE_T)(void);
+    typedef HRESULT(WINAPI * SETPROCESSDPIAWARENESS_T)(PROCESS_DPI_AWARENESS);
+    typedef HRESULT(WINAPI * GETDPIFORMONITOR_T)(HMONITOR, MONITOR_DPI_TYPE, UINT*, UINT*);
+
+    SETPROCESSDPIAWARE_T fn_setprocessdpiaware = 0;
+    SETPROCESSDPIAWARENESS_T fn_setprocessdpiawareness = 0;
+    GETDPIFORMONITOR_T fn_getdpiformonitor = 0;
     HINSTANCE user32 = LoadLibraryA("user32.dll");
     if (user32) {
-        _sapp.win32.dpi.setprocessdpiaware = (SETPROCESSDPIAWARE_T) GetProcAddress(user32, "SetProcessDPIAware");
+        fn_setprocessdpiaware = (SETPROCESSDPIAWARE_T) GetProcAddress(user32, "SetProcessDPIAware");
     }
     HINSTANCE shcore = LoadLibraryA("shcore.dll");
     if (shcore) {
-        _sapp.win32.dpi.setprocessdpiawareness = (SETPROCESSDPIAWARENESS_T) GetProcAddress(shcore, "SetProcessDpiAwareness");
-        _sapp.win32.dpi.getdpiformonitor = (GETDPIFORMONITOR_T) GetProcAddress(shcore, "GetDpiForMonitor");
+        fn_setprocessdpiawareness = (SETPROCESSDPIAWARENESS_T) GetProcAddress(shcore, "SetProcessDpiAwareness");
+        fn_getdpiformonitor = (GETDPIFORMONITOR_T) GetProcAddress(shcore, "GetDpiForMonitor");
     }
-    if (_sapp.win32.dpi.setprocessdpiawareness) {
+    if (fn_setprocessdpiawareness) {
         /* if the app didn't request HighDPI rendering, let Windows do the upscaling */
         PROCESS_DPI_AWARENESS process_dpi_awareness = PROCESS_SYSTEM_DPI_AWARE;
         _sapp.win32.dpi.aware = true;
@@ -5490,18 +5492,18 @@ _SOKOL_PRIVATE void _sapp_win32_init_dpi(void) {
             process_dpi_awareness = PROCESS_DPI_UNAWARE;
             _sapp.win32.dpi.aware = false;
         }
-        _sapp.win32.dpi.setprocessdpiawareness(process_dpi_awareness);
+        fn_setprocessdpiawareness(process_dpi_awareness);
     }
-    else if (_sapp.win32.dpi.setprocessdpiaware) {
-        _sapp.win32.dpi.setprocessdpiaware();
+    else if (fn_setprocessdpiaware) {
+        fn_setprocessdpiaware();
         _sapp.win32.dpi.aware = true;
     }
     /* get dpi scale factor for main monitor */
-    if (_sapp.win32.dpi.getdpiformonitor && _sapp.win32.dpi.aware) {
+    if (fn_getdpiformonitor && _sapp.win32.dpi.aware) {
         POINT pt = { 1, 1 };
         HMONITOR hm = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
         UINT dpix, dpiy;
-        HRESULT hr = _sapp.win32.dpi.getdpiformonitor(hm, MDT_EFFECTIVE_DPI, &dpix, &dpiy);
+        HRESULT hr = fn_getdpiformonitor(hm, MDT_EFFECTIVE_DPI, &dpix, &dpiy);
         _SOKOL_UNUSED(hr);
         SOKOL_ASSERT(SUCCEEDED(hr));
         /* clamp window scale to an integer factor */
