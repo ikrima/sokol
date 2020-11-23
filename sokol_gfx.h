@@ -1973,6 +1973,8 @@ typedef struct sg_image_info {
     uint32_t upd_frame_index;       /* frame index of last sg_update_image() */
     int num_slots;                  /* number of renaming-slots for dynamically updated images */
     int active_slot;                /* currently active write-slot for dynamically updated images */
+    int width;                      /* image width */
+    int height;                     /* image height */
 } sg_image_info;
 
 typedef struct sg_shader_info {
@@ -5460,6 +5462,8 @@ _SOKOL_PRIVATE void _sg_gl_destroy_context(_sg_context_t* ctx) {
         }
         _SG_GL_CHECK_ERROR();
     }
+    #else
+    _SOKOL_UNUSED(ctx);
     #endif
 }
 
@@ -5904,6 +5908,7 @@ _SOKOL_PRIVATE sg_resource_state _sg_gl_create_pipeline(_sg_pipeline_t* pip, _sg
 
 _SOKOL_PRIVATE void _sg_gl_destroy_pipeline(_sg_pipeline_t* pip) {
     SOKOL_ASSERT(pip);
+    _SOKOL_UNUSED(pip);
     /* empty */
 }
 
@@ -8818,6 +8823,7 @@ _SOKOL_PRIVATE void _sg_mtl_destroy_context(_sg_context_t* ctx) {
 }
 
 _SOKOL_PRIVATE void _sg_mtl_activate_context(_sg_context_t* ctx) {
+    _SOKOL_UNUSED(ctx);
     _sg_mtl_clear_state_cache();
 }
 
@@ -8952,6 +8958,7 @@ _SOKOL_PRIVATE bool _sg_mtl_init_texdesc_common(MTLTextureDescriptor* mtl_desc, 
 /* initialize MTLTextureDescritor with rendertarget attributes */
 _SOKOL_PRIVATE void _sg_mtl_init_texdesc_rt(MTLTextureDescriptor* mtl_desc, _sg_image_t* img) {
     SOKOL_ASSERT(img->cmn.render_target);
+    _SOKOL_UNUSED(img);
     /* reset the cpuCacheMode to 'default' */
     mtl_desc.cpuCacheMode = MTLCPUCacheModeDefaultCache;
     /* render targets are only visible to the GPU */
@@ -9476,6 +9483,7 @@ _SOKOL_PRIVATE void _sg_mtl_commit(void) {
     id<MTLDrawable> cur_drawable = (__bridge id<MTLDrawable>) _sg.mtl.drawable_cb();
     [_sg_mtl_cmd_buffer presentDrawable:cur_drawable];
     [_sg_mtl_cmd_buffer addCompletedHandler:^(id<MTLCommandBuffer> cmd_buffer) {
+        _SOKOL_UNUSED(cmd_buffer);
         dispatch_semaphore_signal(_sg_mtl_sem);
     }];
     [_sg_mtl_cmd_buffer commit];
@@ -9567,6 +9575,7 @@ _SOKOL_PRIVATE void _sg_mtl_apply_bindings(
     _sg_image_t** vs_imgs, int num_vs_imgs,
     _sg_image_t** fs_imgs, int num_fs_imgs)
 {
+    _SOKOL_UNUSED(pip);
     SOKOL_ASSERT(_sg.mtl.in_pass);
     if (!_sg.mtl.pass_valid) {
         return;
@@ -13419,6 +13428,7 @@ SOKOL_API_IMPL void *sg_active_context_userdata(void) {
 SOKOL_API_IMPL sg_trace_hooks sg_install_trace_hooks(const sg_trace_hooks* trace_hooks) {
     SOKOL_ASSERT(_sg.valid);
     SOKOL_ASSERT(trace_hooks);
+    _SOKOL_UNUSED(trace_hooks);
     #if defined(SOKOL_TRACE_HOOKS)
         sg_trace_hooks old_hooks = _sg.hooks;
         _sg.hooks = *trace_hooks;
@@ -14046,6 +14056,7 @@ SOKOL_API_IMPL void sg_update_image(sg_image img_id, const sg_image_content* dat
 SOKOL_API_IMPL void sg_push_debug_group(const char* name) {
     SOKOL_ASSERT(_sg.valid);
     SOKOL_ASSERT(name);
+    _SOKOL_UNUSED(name);
     _SG_TRACE_ARGS(push_debug_group, name);
 }
 
@@ -14094,6 +14105,8 @@ SOKOL_API_IMPL sg_image_info sg_query_image_info(sg_image img_id) {
         info.num_slots = img->cmn.num_slots;
         info.active_slot = img->cmn.active_slot;
         #endif
+        info.width = img->cmn.width;
+        info.height = img->cmn.height;
     }
     return info;
 }

@@ -950,6 +950,10 @@ SOKOL_API_DECL float sapp_dpi_scale(void);
 SOKOL_API_DECL void sapp_show_keyboard(bool visible);
 /* return true if the mobile device onscreen keyboard is currently shown */
 SOKOL_API_DECL bool sapp_keyboard_shown(void);
+/* query fullscreen mode */
+SOKOL_API_DECL bool sapp_is_fullscreen(void);
+/* toggle fullscreen mode */
+SOKOL_API_DECL void sapp_toggle_fullscreen(void);
 /* show or hide the mouse cursor */
 SOKOL_API_DECL void sapp_show_mouse(bool visible);
 /* show or hide the mouse cursor */
@@ -1203,6 +1207,7 @@ typedef struct {
     int sample_count;       /* per window ? */
     int swap_interval;      /* per window ? */
     float dpi_scale;        /* per window ? */
+    bool fullscreen;
     bool gles2_fallback;
     bool first_frame;
     bool init_called;
@@ -1406,6 +1411,7 @@ _SOKOL_PRIVATE void _sapp_init_state(const sapp_desc* desc) {
         _sapp_strcpy("sokol_app", _sapp.window_title, sizeof(_sapp.window_title));
     }
     _sapp.dpi_scale = 1.0f;
+    _sapp.fullscreen = _sapp.desc.fullscreen;
     _sapp.windows.capacity = _sapp_def(desc->num_windows, 1);
 }
 
@@ -1674,7 +1680,8 @@ _SOKOL_PRIVATE void _sapp_macos_frame(void) {
 
 @implementation _sapp_macos_app_delegate
 - (void)applicationDidFinishLaunching:(NSNotification*)aNotification {
-    if (_sapp.desc.fullscreen) {
+    _SOKOL_UNUSED(aNotification);
+    if (_sapp.fullscreen) {
         NSRect screen_rect = NSScreen.mainScreen.frame;
         _sapp.window_width = screen_rect.size.width;
         _sapp.window_height = screen_rect.size.height;
@@ -1767,7 +1774,7 @@ _SOKOL_PRIVATE void _sapp_macos_frame(void) {
         [[NSRunLoop currentRunLoop] addTimer:_sapp_macos_timer_obj forMode:NSDefaultRunLoopMode];
     #endif
     _sapp.valid = true;
-    if (_sapp.desc.fullscreen) {
+    if (_sapp.fullscreen) {
         /* on GL, this already toggles a rendered frame, so set the valid flag before */
         [_sapp_macos_window_obj toggleFullScreen:self];
     }
@@ -1778,6 +1785,7 @@ _SOKOL_PRIVATE void _sapp_macos_frame(void) {
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication*)sender {
+    _SOKOL_UNUSED(sender);
     return YES;
 }
 @end
@@ -1829,6 +1837,7 @@ _SOKOL_PRIVATE void _sapp_macos_app_event(sapp_event_type type) {
 
 @implementation _sapp_macos_window_delegate
 - (BOOL)windowShouldClose:(id)sender {
+    _SOKOL_UNUSED(sender);
     /* only give user-code a chance to intervene when sapp_quit() wasn't already called */
     if (!_sapp.quit_ordered) {
         /* if window should be closed and event handling is enabled, give user code
@@ -1851,15 +1860,18 @@ _SOKOL_PRIVATE void _sapp_macos_app_event(sapp_event_type type) {
 }
 
 - (void)windowDidResize:(NSNotification*)notification {
+    _SOKOL_UNUSED(notification);
     _sapp_macos_update_dimensions();
     _sapp_macos_app_event(SAPP_EVENTTYPE_RESIZED);
 }
 
 - (void)windowDidMiniaturize:(NSNotification*)notification {
+    _SOKOL_UNUSED(notification);
     _sapp_macos_app_event(SAPP_EVENTTYPE_ICONIFIED);
 }
 
 - (void)windowDidDeminiaturize:(NSNotification*)notification {
+    _SOKOL_UNUSED(notification);
     _sapp_macos_app_event(SAPP_EVENTTYPE_RESTORED);
 }
 @end
@@ -1867,11 +1879,14 @@ _SOKOL_PRIVATE void _sapp_macos_app_event(sapp_event_type type) {
 #if defined(SOKOL_METAL)
 @implementation _sapp_macos_mtk_view_dlg
 - (void)drawInMTKView:(MTKView*)view {
+    _SOKOL_UNUSED(view);
     @autoreleasepool {
         _sapp_macos_frame();
     }
 }
 - (void)mtkView:(MTKView*)view drawableSizeWillChange:(CGSize)size {
+    _SOKOL_UNUSED(view);
+    _SOKOL_UNUSED(size);
     /* this is required by the protocol, but we can't do anything useful here */
 }
 @end
@@ -1880,6 +1895,7 @@ _SOKOL_PRIVATE void _sapp_macos_app_event(sapp_event_type type) {
 @implementation _sapp_macos_view
 #if defined(SOKOL_GLCORE33)
 - (void)timerFired:(id)sender {
+    _SOKOL_UNUSED(sender);
     [self setNeedsDisplay:YES];
 }
 - (void)prepareOpenGL {
@@ -1890,6 +1906,7 @@ _SOKOL_PRIVATE void _sapp_macos_app_event(sapp_event_type type) {
     [ctx makeCurrentContext];
 }
 - (void)drawRect:(NSRect)bound {
+    _SOKOL_UNUSED(bound);
     _sapp_macos_frame();
     [[_sapp_view_obj openGLContext] flushBuffer];
 }
@@ -2045,6 +2062,7 @@ _SOKOL_PRIVATE void _sapp_macos_app_event(sapp_event_type type) {
     }
 }
 - (void)cursorUpdate:(NSEvent*)event {
+    _SOKOL_UNUSED(event);
     if (_sapp.desc.user_cursor) {
         _sapp_macos_app_event(SAPP_EVENTTYPE_UPDATE_CURSOR);
     }
@@ -2629,6 +2647,8 @@ _SOKOL_PRIVATE void _sapp_emsc_wgpu_surfaces_discard(void);
 #endif
 
 _SOKOL_PRIVATE EM_BOOL _sapp_emsc_size_changed(int event_type, const EmscriptenUiEvent* ui_event, void* user_data) {
+    _SOKOL_UNUSED(event_type);
+    _SOKOL_UNUSED(user_data);
     double w, h;
     emscripten_get_element_css_size(_sapp.html5_canvas_name, &w, &h);
     /* The above method might report zero when toggling HTML5 fullscreen,
@@ -2683,6 +2703,7 @@ _SOKOL_PRIVATE EM_BOOL _sapp_emsc_size_changed(int event_type, const EmscriptenU
 }
 
 _SOKOL_PRIVATE EM_BOOL _sapp_emsc_mouse_cb(int emsc_type, const EmscriptenMouseEvent* emsc_event, void* user_data) {
+    _SOKOL_UNUSED(user_data);
     _sapp.mouse_x = (emsc_event->targetX * _sapp.dpi_scale);
     _sapp.mouse_y = (emsc_event->targetY * _sapp.dpi_scale);
     if (_sapp_events_enabled() && (emsc_event->button >= 0) && (emsc_event->button < SAPP_MAX_MOUSEBUTTONS)) {
@@ -2745,6 +2766,8 @@ _SOKOL_PRIVATE EM_BOOL _sapp_emsc_mouse_cb(int emsc_type, const EmscriptenMouseE
 }
 
 _SOKOL_PRIVATE EM_BOOL _sapp_emsc_wheel_cb(int emsc_type, const EmscriptenWheelEvent* emsc_event, void* user_data) {
+    _SOKOL_UNUSED(emsc_type);
+    _SOKOL_UNUSED(user_data);
     if (_sapp_events_enabled()) {
         _sapp_init_event(SAPP_EVENTTYPE_MOUSE_SCROLL);
         if (emsc_event->mouse.ctrlKey) {
@@ -2768,6 +2791,7 @@ _SOKOL_PRIVATE EM_BOOL _sapp_emsc_wheel_cb(int emsc_type, const EmscriptenWheelE
 }
 
 _SOKOL_PRIVATE EM_BOOL _sapp_emsc_key_cb(int emsc_type, const EmscriptenKeyboardEvent* emsc_event, void* user_data) {
+    _SOKOL_UNUSED(user_data);
     bool retval = true;
     if (_sapp_events_enabled()) {
         sapp_event_type type;
@@ -2904,6 +2928,7 @@ _SOKOL_PRIVATE EM_BOOL _sapp_emsc_key_cb(int emsc_type, const EmscriptenKeyboard
 }
 
 _SOKOL_PRIVATE EM_BOOL _sapp_emsc_touch_cb(int emsc_type, const EmscriptenTouchEvent* emsc_event, void* user_data) {
+    _SOKOL_UNUSED(user_data);
     bool retval = true;
     if (_sapp_events_enabled()) {
         sapp_event_type type;
@@ -3064,6 +3089,8 @@ _SOKOL_PRIVATE void _sapp_emsc_keytable_init(void) {
 
 #if defined(SOKOL_GLES2) || defined(SOKOL_GLES3)
 _SOKOL_PRIVATE EM_BOOL _sapp_emsc_webgl_context_cb(int emsc_type, const void* reserved, void* user_data) {
+    _SOKOL_UNUSED(reserved);
+    _SOKOL_UNUSED(user_data);
     sapp_event_type type;
     switch (emsc_type) {
         case EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST:     type = SAPP_EVENTTYPE_SUSPENDED; break;
@@ -4650,6 +4677,41 @@ _SOKOL_PRIVATE bool _sapp_win32_wide_to_utf8(const wchar_t* src, char* dst, int 
     return 0 != WideCharToMultiByte(CP_UTF8, 0, src, -1, dst, dst_num_bytes, NULL, NULL);
 }
 
+_SOKOL_PRIVATE void _sapp_win32_toggle_fullscreen() {
+    HMONITOR monitor = MonitorFromWindow(_sapp_win32_msg_hwnd, MONITOR_DEFAULTTONEAREST);
+    MONITORINFO minfo = { .cbSize = sizeof(MONITORINFO) };
+    GetMonitorInfo(monitor, &minfo);
+    const RECT mr = minfo.rcMonitor;
+    const int monitor_w = mr.right - mr.left;
+    const int monitor_h = mr.bottom - mr.top;
+
+    const DWORD win_ex_style = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
+    DWORD win_style;
+    RECT rect = { 0, 0, 0, 0 };
+
+    _sapp.fullscreen = !_sapp.fullscreen;
+    if (!_sapp.fullscreen) {
+        win_style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX;
+        rect.right = (int) ((float)_sapp_def(_sapp.desc.width, 640) * _sapp_win32_window_scale);
+        rect.bottom = (int) ((float)_sapp_def(_sapp.desc.height, 480) * _sapp_win32_window_scale);
+    }
+    else {
+        win_style = WS_POPUP | WS_SYSMENU | WS_VISIBLE;
+        rect.right = monitor_w;
+        rect.bottom = monitor_h;
+    }
+    AdjustWindowRectEx(&rect, win_style, FALSE, win_ex_style);
+    int win_width = rect.right - rect.left;
+    int win_height = rect.bottom - rect.top;
+    if (!_sapp.fullscreen) {
+        rect.left = (monitor_w - win_width) / 2;
+        rect.top = (monitor_h - win_height) / 2;
+    }
+
+    SetWindowLongPtr(_sapp_win32_msg_hwnd, GWL_STYLE, win_style);
+    SetWindowPos(_sapp_win32_msg_hwnd, HWND_TOP, mr.left + rect.left, mr.top + rect.top, win_width, win_height, SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+}
+
 _SOKOL_PRIVATE void _sapp_win32_show_mouse(bool shown) {
     ShowCursor((BOOL)shown);
 }
@@ -4799,8 +4861,8 @@ _SOKOL_PRIVATE bool _sapp_win32_update_dimensions(HWND hwnd, int* out_window_wid
         const int fb_width = (int)((float)window_width * _sapp_win32_content_scale);
         const int fb_height = (int)((float)window_height * _sapp_win32_content_scale);
         if ((fb_width != framebuffer_width) || (fb_height != framebuffer_height)) {
-            framebuffer_width = (int)((float)window_width * _sapp_win32_content_scale);
-            framebuffer_height = (int)((float)window_height * _sapp_win32_content_scale);
+            framebuffer_width = fb_width;
+            framebuffer_height = fb_height;
             /* prevent a framebuffer size of 0 when window is minimized */
             if (framebuffer_width == 0) {
                 framebuffer_width = 1;
@@ -4931,7 +4993,7 @@ _SOKOL_PRIVATE LRESULT CALLBACK _sapp_win32_wndproc(HWND hWnd, UINT uMsg, WPARAM
                 switch (wParam & 0xFFF0) {
                     case SC_SCREENSAVE:
                     case SC_MONITORPOWER:
-                        if (_sapp.desc.fullscreen) { /* FIXME */
+                        if (_sapp.fullscreen) {
                             /* disable screen saver and blanking in fullscreen mode */
                             return 0;
                         }
@@ -8176,6 +8238,18 @@ SOKOL_API_IMPL void sapp_show_keyboard(bool shown) {
 
 SOKOL_API_IMPL bool sapp_keyboard_shown(void) {
     return _sapp.onscreen_keyboard_shown;
+}
+
+SOKOL_API_DECL bool sapp_is_fullscreen(void) {
+    return _sapp.fullscreen;
+}
+
+SOKOL_API_DECL void sapp_toggle_fullscreen(void) {
+    #if defined(_WIN32)
+    _sapp_win32_toggle_fullscreen();
+    #else
+    _SOKOL_UNUSED(shown);
+    #endif
 }
 
 SOKOL_API_IMPL void sapp_show_mouse(bool shown) {
