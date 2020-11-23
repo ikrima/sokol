@@ -73,9 +73,18 @@
     - on macOS with GL: Cocoa, QuartzCore, OpenGL
     - on iOS with Metal: UIKit, Metal, MetalKit
     - on iOS with GL: UIKit, OpenGLES, GLKit
-    - on Linux: X11, Xi, Xcursor, GL, dl, m(?)
+    - on Linux: X11, Xi, Xcursor, GL, dl, pthread, m(?)
     - on Android: GLESv3, EGL, log, android
     - on Windows: no action needed, libs are defined in-source via pragma-comment-lib
+
+    On Linux, you also need to use the -pthread compiler and linker option, otherwise weird
+    things will happen, see here for details: https://github.com/floooh/sokol/issues/376
+
+    Building for UWP requires a recent Visual Studio toolchain and Windows SDK
+    (at least VS2019 and Windows SDK 10.0.19041.0). When the UWP backend is
+    selected, the sokol_app.h implementation must be compiled as C++17.
+
+    On macOS and iOS, the implementation must be compiled as Objective-C.
 
     FEATURE OVERVIEW
     ================
@@ -122,17 +131,20 @@
     key repeat flag     | YES     | YES   | YES   | ---   | ---     | YES  | TODO  | YES
     windowed            | YES     | YES   | YES   | ---   | ---     | YES  | TODO  | YES
     fullscreen          | YES     | YES   | YES   | YES   | YES     | YES  | TODO  | ---
-    mouse hide          | YES     | YES   | YES   | ---   | ---     | TODO | TODO  | TODO
+    mouse hide          | YES     | YES   | YES   | ---   | ---     | YES  | TODO  | TODO
     mouse lock          | YES     | YES   | YES   | ---   | ---     | TODO | TODO  | YES
     screen keyboard     | ---     | ---   | ---   | YES   | TODO    | TODO | ---   | YES
     swap interval       | YES     | YES   | YES   | YES   | TODO    | ---  | TODO  | YES
     high-dpi            | YES     | YES   | TODO  | YES   | YES     | YES  | TODO  | YES
     clipboard           | YES     | YES   | TODO  | ---   | ---     | TODO | ---   | YES
+    MSAA                | YES     | YES   | YES   | YES   | YES     | TODO | TODO  | YES
 
     TODO
     ====
     - Linux:
         - clipboard support
+    - UWP:
+        - clipboard, mouselock, MSAA support
     - sapp_consume_event() on non-web platforms?
 
     STEP BY STEP
@@ -1145,6 +1157,15 @@ SOKOL_API_DECL const void* sapp_android_get_native_activity(void);
 inline int sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
 
 #endif
+
+// this WinRT specific hack is required when wWinMain is in a static library
+#if defined(_MSC_VER) && defined(UNICODE)
+#include <winapifamily.h>
+#if defined(WINAPI_FAMILY_PARTITION) && !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
+#pragma comment(linker, "/include:wWinMain")
+#endif
+#endif
+
 #endif // SOKOL_APP_INCLUDED
 
 /*-- IMPLEMENTATION ----------------------------------------------------------*/
@@ -1428,6 +1449,7 @@ inline int sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
 
 typedef struct {
     uint32_t flags_changed_store;
+    uint8_t mouse_buttons;
     NSWindow* window;
     NSTrackingArea* tracking_area;
     _sapp_macos_app_delegate* app_dlg;
@@ -1554,6 +1576,7 @@ typedef struct {
     bool in_create_window;
     bool iconified;
     bool mouse_tracked;
+    uint8_t mouse_capture_mask;
     _sapp_win32_dpi_t dpi;
     bool raw_input_mousepos_valid;
     LONG raw_input_mousepos_x;
@@ -1626,8 +1649,15 @@ typedef struct {
 #if defined(_SAPP_UWP)
 
 typedef struct {
+    float content_scale;
+    float window_scale;
+    float mouse_scale;
+} _sapp_uwp_dpi_t;
+
+typedef struct {
     bool mouse_tracked;
     uint8_t mouse_buttons;
+    _sapp_uwp_dpi_t dpi;
 } _sapp_uwp_t;
 
 #endif // _SAPP_UWP
@@ -1736,6 +1766,7 @@ typedef struct {
 } _sapp_xi_t;
 
 typedef struct {
+    uint8_t mouse_buttons;
     Display* display;
     int screen;
     Window root;
@@ -3105,34 +3136,55 @@ _SOKOL_PRIVATE void _sapp_macos_frame(void) {
     [super updateTrackingAreas];
 }
 - (void)mouseEntered:(NSEvent*)event {
-    _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_ENTER, SAPP_MOUSEBUTTON_INVALID, _sapp_macos_mod(event.modifierFlags));
+    /* don't send mouse enter/leave while dragging (so that it behaves the same as
+       on Windows while SetCapture is active
+    */
+    if (0 == _sapp.macos.mouse_buttons) {
+        _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_ENTER, SAPP_MOUSEBUTTON_INVALID, _sapp_macos_mod(event.modifierFlags));
+    }
 }
 - (void)mouseExited:(NSEvent*)event {
-    _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_LEAVE, SAPP_MOUSEBUTTON_INVALID, _sapp_macos_mod(event.modifierFlags));
+    if (0 == _sapp.macos.mouse_buttons) {
+        _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_LEAVE, SAPP_MOUSEBUTTON_INVALID, _sapp_macos_mod(event.modifierFlags));
+    }
 }
 - (void)mouseDown:(NSEvent*)event {
     _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_DOWN, SAPP_MOUSEBUTTON_LEFT, _sapp_macos_mod(event.modifierFlags));
+    _sapp.macos.mouse_buttons |= (1<<SAPP_MOUSEBUTTON_LEFT);
 }
 - (void)mouseUp:(NSEvent*)event {
     _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_UP, SAPP_MOUSEBUTTON_LEFT, _sapp_macos_mod(event.modifierFlags));
+    _sapp.macos.mouse_buttons &= ~(1<<SAPP_MOUSEBUTTON_LEFT);
 }
 - (void)rightMouseDown:(NSEvent*)event {
     _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_DOWN, SAPP_MOUSEBUTTON_RIGHT, _sapp_macos_mod(event.modifierFlags));
+    _sapp.macos.mouse_buttons |= (1<<SAPP_MOUSEBUTTON_RIGHT);
 }
 - (void)rightMouseUp:(NSEvent*)event {
     _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_UP, SAPP_MOUSEBUTTON_RIGHT, _sapp_macos_mod(event.modifierFlags));
+    _sapp.macos.mouse_buttons &= ~(1<<SAPP_MOUSEBUTTON_RIGHT);
 }
 - (void)otherMouseDown:(NSEvent*)event {
     if (2 == event.buttonNumber) {
         _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_DOWN, SAPP_MOUSEBUTTON_MIDDLE, _sapp_macos_mod(event.modifierFlags));
+        _sapp.macos.mouse_buttons |= (1<<SAPP_MOUSEBUTTON_MIDDLE);
     }
 }
 - (void)otherMouseUp:(NSEvent*)event {
     if (2 == event.buttonNumber) {
         _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_UP, SAPP_MOUSEBUTTON_MIDDLE, _sapp_macos_mod(event.modifierFlags));
+        _sapp.macos.mouse_buttons &= (1<<SAPP_MOUSEBUTTON_MIDDLE);
     }
 }
-// FIXME: otherMouseDragged?
+- (void)otherMouseDragged:(NSEvent*)event {
+    if (2 == event.buttonNumber) {
+        if (_sapp.mouse.locked) {
+            _sapp.mouse.dx = [event deltaX];
+            _sapp.mouse.dy = [event deltaY];
+        }
+        _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_MOVE, SAPP_MOUSEBUTTON_MIDDLE, _sapp_macos_mod(event.modifierFlags));
+    }
+}
 - (void)mouseMoved:(NSEvent*)event {
     if (_sapp.mouse.locked) {
         _sapp.mouse.dx = [event deltaX];
@@ -5284,6 +5336,22 @@ _SOKOL_PRIVATE void _sapp_win32_show_mouse(bool visible) {
     ShowCursor((BOOL)visible);
 }
 
+_SOKOL_PRIVATE void _sapp_win32_capture_mouse(uint8_t btn_mask, HWND hwnd) {
+    if (0 == _sapp.win32.mouse_capture_mask) {
+        SetCapture(hwnd);
+    }
+    _sapp.win32.mouse_capture_mask |= btn_mask;
+}
+
+_SOKOL_PRIVATE void _sapp_win32_release_mouse(uint8_t btn_mask) {
+    if (0 != _sapp.win32.mouse_capture_mask) {
+        _sapp.win32.mouse_capture_mask &= ~btn_mask;
+        if (0 == _sapp.win32.mouse_capture_mask) {
+            ReleaseCapture();
+        }
+    }
+}
+
 _SOKOL_PRIVATE void _sapp_win32_lock_mouse(bool lock, sapp_window window) {
     if (lock == _sapp.mouse.locked) {
         return;
@@ -5291,6 +5359,7 @@ _SOKOL_PRIVATE void _sapp_win32_lock_mouse(bool lock, sapp_window window) {
     _sapp.mouse.dx = 0.0f;
     _sapp.mouse.dy = 0.0f;
     _sapp.mouse.locked = lock;
+    _sapp_win32_release_mouse(0xFF);
     if (_sapp.mouse.locked) {
         /* store the current mouse position, so it can be restored when unlocked */
         POINT pos;
@@ -5520,21 +5589,27 @@ _SOKOL_PRIVATE LRESULT CALLBACK _sapp_win32_wndproc(HWND hWnd, UINT uMsg, WPARAM
                 break;
             case WM_LBUTTONDOWN:
                 _sapp_win32_mouse_event(handle, SAPP_EVENTTYPE_MOUSE_DOWN, SAPP_MOUSEBUTTON_LEFT);
+                _sapp_win32_capture_mouse(1<<SAPP_MOUSEBUTTON_LEFT,win32_window->hwnd);
                 break;
             case WM_RBUTTONDOWN:
                 _sapp_win32_mouse_event(handle, SAPP_EVENTTYPE_MOUSE_DOWN, SAPP_MOUSEBUTTON_RIGHT);
+                _sapp_win32_capture_mouse(1<<SAPP_MOUSEBUTTON_RIGHT,win32_window->hwnd);
                 break;
             case WM_MBUTTONDOWN:
                 _sapp_win32_mouse_event(handle, SAPP_EVENTTYPE_MOUSE_DOWN, SAPP_MOUSEBUTTON_MIDDLE);
+                _sapp_win32_capture_mouse(1<<SAPP_MOUSEBUTTON_MIDDLE,win32_window->hwnd);
                 break;
             case WM_LBUTTONUP:
                 _sapp_win32_mouse_event(handle, SAPP_EVENTTYPE_MOUSE_UP, SAPP_MOUSEBUTTON_LEFT);
+                _sapp_win32_release_mouse(1<<SAPP_MOUSEBUTTON_LEFT);
                 break;
             case WM_RBUTTONUP:
                 _sapp_win32_mouse_event(handle, SAPP_EVENTTYPE_MOUSE_UP, SAPP_MOUSEBUTTON_RIGHT);
+                _sapp_win32_release_mouse(1<<SAPP_MOUSEBUTTON_RIGHT);
                 break;
             case WM_MBUTTONUP:
                 _sapp_win32_mouse_event(handle, SAPP_EVENTTYPE_MOUSE_UP, SAPP_MOUSEBUTTON_MIDDLE);
+                _sapp_win32_release_mouse(1<<SAPP_MOUSEBUTTON_MIDDLE);
                 break;
             case WM_MOUSEMOVE:
                 if (!_sapp.mouse.locked) {
@@ -6054,6 +6129,19 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 #if defined(_SAPP_UWP)
 
 // Helper functions
+_SOKOL_PRIVATE void _sapp_uwp_configure_dpi(float monitor_dpi) {
+    _sapp.uwp.dpi.window_scale = monitor_dpi / 96.0f;
+    if (_sapp.desc.high_dpi) {
+        _sapp.uwp.dpi.content_scale = _sapp.uwp.dpi.window_scale;
+        _sapp.uwp.dpi.mouse_scale = 1.0f * _sapp.uwp.dpi.window_scale;
+    }
+    else {
+        _sapp.uwp.dpi.content_scale = 1.0f;
+        _sapp.uwp.dpi.mouse_scale = 1.0f;
+    }
+    _sapp.dpi_scale = _sapp.uwp.dpi.content_scale;
+}
+
 _SOKOL_PRIVATE void _sapp_uwp_show_mouse(bool visible) {
     using namespace winrt::Windows::UI::Core;
 
@@ -6215,7 +6303,6 @@ public:
     void Present();
     winrt::Windows::Foundation::Size GetOutputSize() const { return m_outputSize; }
     winrt::Windows::Foundation::Size GetLogicalSize() const { return m_logicalSize; }
-    float GetDpi() const { return m_effectiveDpi; }
     ID3D11Device3* GetD3DDevice() const { return m_d3dDevice.get(); }
     ID3D11DeviceContext3* GetD3DDeviceContext() const { return m_d3dContext.get(); }
     IDXGISwapChain3* GetSwapChain() const { return m_swapChain.get(); }
@@ -6226,14 +6313,6 @@ public:
     DirectX::XMFLOAT4X4 GetOrientationTransform3D() const { return m_orientationTransform3D; }
 
 private:
-    // DPI scaling behavior constants
-    bool m_supportHighResolutions = true;
-    // The default thresholds that define a "high resolution" display. If the thresholds
-    // are exceeded and SupportHighResolutions is false, the dimensions will be scaled
-    // by 50%.
-    static inline const float m_dpiThreshold = 192.0;        // 200% of standard desktop display.
-    static inline const float m_widthThreshold = 1920.0f;    // 1080p width.
-    static inline const float m_heightThreshold = 1080.0f;   // 1080p height.
 
     // Swapchain Rotation Matrices (Z-rotation)
     static inline const DirectX::XMFLOAT4X4 DeviceResources::m_rotation0 = {
@@ -6265,7 +6344,6 @@ private:
     void CreateWindowSizeDependentResources();
     void UpdateRenderTargetSize();
     DXGI_MODE_ROTATION ComputeDisplayRotation();
-    float ConvertDipsToPixels(float dips, float dpi);
     bool SdkLayersAvailable();
 
     // Direct3D objects.
@@ -6291,9 +6369,6 @@ private:
     winrt::Windows::Graphics::Display::DisplayOrientations m_nativeOrientation = winrt::Windows::Graphics::Display::DisplayOrientations::None;
     winrt::Windows::Graphics::Display::DisplayOrientations m_currentOrientation = winrt::Windows::Graphics::Display::DisplayOrientations::None;
     float m_dpi = -1.0f;
-
-    // This is the DPI that will be reported back to the app. It takes into account whether the app supports high resolution screens or not.
-    float m_effectiveDpi = -1.0f;
 
     // Transforms used for display orientation.
     DirectX::XMFLOAT4X4 m_orientationTransform3D;
@@ -6436,8 +6511,6 @@ void DeviceResources::CreateDeviceResources() {
 }
 
 void DeviceResources::CreateWindowSizeDependentResources() {
-    m_supportHighResolutions = _sapp.desc.high_dpi;
-
     // Cleanup Sokol Context
     _sapp.d3d11.rt = nullptr;
     _sapp.d3d11.rtv = nullptr;
@@ -6488,7 +6561,7 @@ void DeviceResources::CreateWindowSizeDependentResources() {
     }
     else {
         // Otherwise, create a new one using the same adapter as the existing Direct3D device.
-        DXGI_SCALING scaling = m_supportHighResolutions ? DXGI_SCALING_NONE : DXGI_SCALING_STRETCH;
+        DXGI_SCALING scaling = (_sapp.uwp.dpi.content_scale == _sapp.uwp.dpi.window_scale) ? DXGI_SCALING_NONE : DXGI_SCALING_STRETCH;
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
 
         swapChainDesc.Width = lround(m_d3dRenderTargetSize.Width);      // Match the size of the window.
@@ -6519,7 +6592,6 @@ void DeviceResources::CreateWindowSizeDependentResources() {
         winrt::check_hresult(dxgiDevice->SetMaximumFrameLatency(1));
 
         // Setup Sokol Context
-        _sapp.sample_count = swapChainDesc.SampleDesc.Count;
         winrt::check_hresult(swapChain->GetDesc(&_sapp.d3d11.swap_chain_desc));
         _sapp.d3d11.swap_chain = m_swapChain.as<IDXGISwapChain3>().detach();
     }
@@ -6590,26 +6662,9 @@ void DeviceResources::CreateWindowSizeDependentResources() {
 
 // Determine the dimensions of the render target and whether it will be scaled down.
 void DeviceResources::UpdateRenderTargetSize() {
-    m_effectiveDpi = m_dpi;
-
-    // To improve battery life on high resolution devices, render to a smaller render target
-    // and allow the GPU to scale the output when it is presented.
-    if (!m_supportHighResolutions && m_dpi > m_dpiThreshold) {
-        float width = ConvertDipsToPixels(m_logicalSize.Width, m_dpi);
-        float height = ConvertDipsToPixels(m_logicalSize.Height, m_dpi);
-
-        // When the device is in portrait orientation, height > width. Compare the
-        // larger dimension against the width threshold and the smaller dimension
-        // against the height threshold.
-        if ((std::max(width, height) > m_widthThreshold) && (std::min(width, height) > m_heightThreshold)) {
-            // To scale the app we change the effective DPI. Logical size does not change.
-            m_effectiveDpi /= 2.0f;
-        }
-    }
-
     // Calculate the necessary render target size in pixels.
-    m_outputSize.Width = ConvertDipsToPixels(m_logicalSize.Width, m_effectiveDpi);
-    m_outputSize.Height = ConvertDipsToPixels(m_logicalSize.Height, m_effectiveDpi);
+    m_outputSize.Width = m_logicalSize.Width * _sapp.uwp.dpi.content_scale;
+    m_outputSize.Height = m_logicalSize.Height * _sapp.uwp.dpi.content_scale;
 
     // Prevent zero size DirectX content from being created.
     m_outputSize.Width = std::max(m_outputSize.Width, 1.0f);
@@ -6624,6 +6679,7 @@ void DeviceResources::SetWindow(winrt::Windows::UI::Core::CoreWindow const& wind
     m_nativeOrientation = currentDisplayInformation.NativeOrientation();
     m_currentOrientation = currentDisplayInformation.CurrentOrientation();
     m_dpi = currentDisplayInformation.LogicalDpi();
+    _sapp_uwp_configure_dpi(m_dpi);
     CreateWindowSizeDependentResources();
 }
 
@@ -6639,6 +6695,7 @@ void DeviceResources::SetLogicalSize(winrt::Windows::Foundation::Size logicalSiz
 void DeviceResources::SetDpi(float dpi) {
     if (dpi != m_dpi) {
         m_dpi = dpi;
+        _sapp_uwp_configure_dpi(m_dpi);
         // When the display DPI changes, the logical size of the window (measured in Dips) also changes and needs to be updated.
         auto window = m_window.get();
         m_logicalSize = winrt::Windows::Foundation::Size(window.Bounds().Width, window.Bounds().Height);
@@ -6794,12 +6851,6 @@ DXGI_MODE_ROTATION DeviceResources::ComputeDisplayRotation() {
             break;
     }
     return rotation;
-}
-
-// Converts a length in device-independent pixels (DIPs) to a length in physical pixels.
-float DeviceResources::ConvertDipsToPixels(float dips, float dpi) {
-    static const float dipsPerInch = 96.0f;
-    return floorf(dips * dpi / dipsPerInch + 0.5f); // Round to nearest integer.
 }
 
 // Check for SDK Layer support.
@@ -6978,8 +7029,16 @@ void App::OnPointerReleased(winrt::Windows::UI::Core::CoreWindow const& sender, 
 
 void App::OnPointerMoved(winrt::Windows::UI::Core::CoreWindow const& sender, winrt::Windows::UI::Core::PointerEventArgs const& args) {
     auto position = args.CurrentPoint().Position();
-    _sapp.mouse.x = position.X;
-    _sapp.mouse.y = position.Y;
+    const float new_x = (float)(int)(position.X * _sapp.uwp.dpi.mouse_scale + 0.5f);
+    const float new_y = (float)(int)(position.Y * _sapp.uwp.dpi.mouse_scale + 0.5f);
+    // don't update dx/dy in the very first event
+    if (_sapp.mouse.pos_valid) {
+        _sapp.mouse.dx = new_x - _sapp.mouse.x;
+        _sapp.mouse.dy = new_y - _sapp.mouse.y;
+    }
+    _sapp.mouse.x = new_x;
+    _sapp.mouse.y = new_y;
+    _sapp.mouse.pos_valid = true;
     if (!_sapp.uwp.mouse_tracked) {
         _sapp.uwp.mouse_tracked = true;
         _sapp_uwp_mouse_event(SAPP_EVENTTYPE_MOUSE_ENTER, SAPP_MOUSEBUTTON_INVALID, sender);
@@ -6996,24 +7055,21 @@ void App::OnPointerWheelChanged(winrt::Windows::UI::Core::CoreWindow const& send
 }
 
 void App::OnDpiChanged(winrt::Windows::Graphics::Display::DisplayInformation const& sender, winrt::Windows::Foundation::IInspectable const& args) {
+    // NOTE: UNTESTED
     _SOKOL_UNUSED(args);
-
-    // Note: The value for LogicalDpi retrieved here may not match the effective DPI of the app
-    // if it is being scaled for high resolution devices. Once the DPI is set on DeviceResources,
-    // you should always retrieve it using the GetDpi method.
-    // See DeviceResources.cpp for more details.
-
     m_deviceResources->SetDpi(sender.LogicalDpi());
     _sapp_win32_uwp_app_event(SAPP_EVENTTYPE_RESIZED);
 }
 
 void App::OnOrientationChanged(winrt::Windows::Graphics::Display::DisplayInformation const& sender, winrt::Windows::Foundation::IInspectable const& args) {
+    // NOTE: UNTESTED
     _SOKOL_UNUSED(args);
     m_deviceResources->SetCurrentOrientation(sender.CurrentOrientation());
     _sapp_win32_uwp_app_event(SAPP_EVENTTYPE_RESIZED);
 }
 
 void App::OnDisplayContentsInvalidated(winrt::Windows::Graphics::Display::DisplayInformation const& sender, winrt::Windows::Foundation::IInspectable const& args) {
+    // NOTE: UNTESTED
     _SOKOL_UNUSED(args);
     _SOKOL_UNUSED(sender);
     m_deviceResources->ValidateDevice();
@@ -7029,7 +7085,11 @@ _SOKOL_PRIVATE void _sapp_uwp_run(const sapp_desc* desc) {
 }
 
 #if !defined(SOKOL_NO_ENTRY)
-int __stdcall WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow) {
+#if defined(UNICODE)
+int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow) {
+#else
+int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow) {
+#endif
     _SOKOL_UNUSED(hInstance);
     _SOKOL_UNUSED(hPrevInstance);
     _SOKOL_UNUSED(lpCmdLine);
@@ -9425,6 +9485,7 @@ _SOKOL_PRIVATE void _sapp_x11_process_event(XEvent* event) {
                 const uint32_t mods = _sapp_x11_mod(event->xbutton.state);
                 if (btn != SAPP_MOUSEBUTTON_INVALID) {
                     _sapp_x11_mouse_event(SAPP_EVENTTYPE_MOUSE_DOWN, btn, mods);
+                    _sapp.x11.mouse_buttons |= (1 << btn);
                 }
                 else {
                     /* might be a scroll event */
@@ -9442,14 +9503,20 @@ _SOKOL_PRIVATE void _sapp_x11_process_event(XEvent* event) {
                 const sapp_mousebutton btn = _sapp_x11_translate_button(event);
                 if (btn != SAPP_MOUSEBUTTON_INVALID) {
                     _sapp_x11_mouse_event(SAPP_EVENTTYPE_MOUSE_UP, btn, _sapp_x11_mod(event->xbutton.state));
+                    _sapp.x11.mouse_buttons &= ~(1 << btn);
                 }
             }
             break;
         case EnterNotify:
-            _sapp_x11_mouse_event(SAPP_EVENTTYPE_MOUSE_ENTER, SAPP_MOUSEBUTTON_INVALID, _sapp_x11_mod(event->xcrossing.state));
+            /* don't send enter/leave events while mouse button held down */
+            if (0 == _sapp.x11.mouse_buttons) {
+                _sapp_x11_mouse_event(SAPP_EVENTTYPE_MOUSE_ENTER, SAPP_MOUSEBUTTON_INVALID, _sapp_x11_mod(event->xcrossing.state));
+            }
             break;
         case LeaveNotify:
-            _sapp_x11_mouse_event(SAPP_EVENTTYPE_MOUSE_LEAVE, SAPP_MOUSEBUTTON_INVALID, _sapp_x11_mod(event->xcrossing.state));
+            if (0 == _sapp.x11.mouse_buttons) {
+                _sapp_x11_mouse_event(SAPP_EVENTTYPE_MOUSE_LEAVE, SAPP_MOUSEBUTTON_INVALID, _sapp_x11_mod(event->xcrossing.state));
+            }
             break;
         case MotionNotify:
             if (!_sapp.mouse.locked) {

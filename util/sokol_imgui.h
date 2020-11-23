@@ -1483,10 +1483,10 @@ SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
     _simgui_set_imgui_modifiers(io, ev->modifiers);
     switch (ev->type) {
         case SAPP_EVENTTYPE_MOUSE_DOWN: {
-            bool is_any_mouse_down = false; for(bool btn : _simgui.btn_down) { is_any_mouse_down |= btn; }
-            if (!is_any_mouse_down && ::GetCapture() == NULL) {
-                ::SetCapture((HWND)sapp_win32_get_hwnd_window(ev->window));
-            }
+            //bool is_any_mouse_down = false; for(bool btn : _simgui.btn_down) { is_any_mouse_down |= btn; }
+            //if (!is_any_mouse_down && ::GetCapture() == NULL) {
+            //    ::SetCapture((HWND)sapp_win32_get_hwnd_window(ev->window));
+            //}
             io->MousePos.x = ev->mouse_x / dpi_scale;
             io->MousePos.y = ev->mouse_y / dpi_scale;
             if (ev->mouse_button < 3) {
@@ -1495,10 +1495,10 @@ SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
             break;
         }
         case SAPP_EVENTTYPE_MOUSE_UP: {
-            bool is_any_mouse_down = false; for (bool btn : _simgui.btn_down) { is_any_mouse_down |= btn; }
-            if (!is_any_mouse_down && ::GetCapture() == (HWND)sapp_win32_get_hwnd_window(ev->window)) {
-                ::ReleaseCapture();
-            }
+            //bool is_any_mouse_down = false; for (bool btn : _simgui.btn_down) { is_any_mouse_down |= btn; }
+            //if (!is_any_mouse_down && ::GetCapture() == (HWND)sapp_win32_get_hwnd_window(ev->window)) {
+            //    ::ReleaseCapture();
+            //}
             io->MousePos.x = ev->mouse_x / dpi_scale;
             io->MousePos.y = ev->mouse_y / dpi_scale;
             if (ev->mouse_button < 3) {
