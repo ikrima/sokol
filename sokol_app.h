@@ -118,7 +118,10 @@
 
     TODO
     ====
-    - Linux clipboard support
+    - Linux:
+        - clipboard support
+        - fullscreen support
+        - show/hide mouse cursor
     - sapp_consume_event() on non-web platforms?
 
     STEP BY STEP
@@ -515,6 +518,11 @@
     might still be used for the non-fullscreen window, in case the user can
     switch back from fullscreen- to windowed-mode).
 
+    To toggle fullscreen mode programmatically, call sapp_toggle_fullscreen().
+
+    To check if the application window is currently in fullscreen mode,
+    call sapp_is_fullscreen().
+
     ONSCREEN KEYBOARD
     =================
     On some platforms which don't provide a physical keyboard, sokol-app
@@ -564,7 +572,6 @@
     - sapp_desc needs a bool whether to initialize depth-stencil surface
     - GL context initialization needs more control (at least what GL version to initialize)
     - application icon
-    - mouse pointer visibility(?)
     - the UPDATE_CURSOR event currently behaves differently between Win32 and OSX
       (Win32 sends the event each frame when the mouse moves and is inside the window
       client area, OSX sends it only once when the mouse enters the client area)
@@ -1215,8 +1222,8 @@ typedef struct {
     bool quit_requested;
     bool quit_ordered;
     bool event_consumed;
-    const char* html5_canvas_name;
     bool html5_ask_leave_site;
+    char html5_canvas_name[_SAPP_MAX_TITLE_LENGTH];
     char window_title[_SAPP_MAX_TITLE_LENGTH];           /* UTF-8 */ /* remove, as it is per window */
     wchar_t window_title_wide[_SAPP_MAX_TITLE_LENGTH];   /* UTF-32 or UCS-2 */ /* remove, as it is per window */
     uint64_t frame_count;
@@ -1387,29 +1394,38 @@ _SOKOL_PRIVATE void _sapp_strcpy(const char* src, char* dst, int max_len) {
     }
 }
 
+_SOKOL_PRIVATE sapp_desc _sapp_desc_defaults(const sapp_desc* in_desc) {
+    sapp_desc desc = *in_desc;
+    desc.width = _sapp_def(desc.width, 640);
+    desc.height = _sapp_def(desc.height, 480);
+    desc.sample_count = _sapp_def(desc.sample_count, 1);
+    desc.swap_interval = (desc.swap_interval < 0) ? 0 : _sapp_def(desc.swap_interval, 1);
+    desc.html5_canvas_name = _sapp_def(desc.html5_canvas_name, "canvas");
+    desc.clipboard_size = _sapp_def(desc.clipboard_size, 8192);
+    desc.window_title = _sapp_def(desc.window_title, "sokol_app");
+    return desc;
+}
+
 _SOKOL_PRIVATE void _sapp_init_state(const sapp_desc* desc) {
     memset(&_sapp, 0, sizeof(_sapp));
-    _sapp.desc = *desc;
+    _sapp.desc = _sapp_desc_defaults(desc);
     _sapp.first_frame = true;
-    _sapp.window_width = _sapp_def(_sapp.desc.width, 640);
-    _sapp.window_height = _sapp_def(_sapp.desc.height, 480);
+    _sapp.window_width = _sapp.desc.width;
+    _sapp.window_height = _sapp.desc.height;
     _sapp.framebuffer_width = _sapp.window_width;
     _sapp.framebuffer_height = _sapp.window_height;
-    _sapp.sample_count = _sapp_def(_sapp.desc.sample_count, 1);
-    _sapp.swap_interval = (_sapp.desc.swap_interval<0) ? 0 : _sapp_def(_sapp.desc.swap_interval, 1);
-    _sapp.html5_canvas_name = _sapp_def(_sapp.desc.html5_canvas_name, "canvas");
+    _sapp.sample_count = _sapp.desc.sample_count;
+    _sapp.swap_interval = _sapp.desc.swap_interval;
+    _sapp_strcpy(_sapp.desc.html5_canvas_name, _sapp.html5_canvas_name, sizeof(_sapp.html5_canvas_name));
+    _sapp.desc.html5_canvas_name = _sapp.html5_canvas_name;
     _sapp.html5_ask_leave_site = _sapp.desc.html5_ask_leave_site;
     _sapp.clipboard_enabled = _sapp.desc.enable_clipboard;
     if (_sapp.clipboard_enabled) {
-        _sapp.clipboard_size = _sapp_def(_sapp.desc.clipboard_size, 8192);
+        _sapp.clipboard_size = _sapp.desc.clipboard_size;
         _sapp.clipboard = (char*) SOKOL_CALLOC(1, _sapp.clipboard_size);
     }
-    if (_sapp.desc.window_title) {
-        _sapp_strcpy(_sapp.desc.window_title, _sapp.window_title, sizeof(_sapp.window_title));
-    }
-    else {
-        _sapp_strcpy("sokol_app", _sapp.window_title, sizeof(_sapp.window_title));
-    }
+    _sapp_strcpy(_sapp.desc.window_title, _sapp.window_title, sizeof(_sapp.window_title));
+    _sapp.desc.window_title = _sapp.window_title;
     _sapp.dpi_scale = 1.0f;
     _sapp.fullscreen = _sapp.desc.fullscreen;
     _sapp.windows.capacity = _sapp_def(desc->num_windows, 1);
@@ -1678,6 +1694,15 @@ _SOKOL_PRIVATE void _sapp_macos_frame(void) {
     }
 }
 
+_SOKOL_PRIVATE void _sapp_macos_toggle_fullscreen(void) {
+    /* NOTE: the _sapp.fullscreen flag is also notified by the
+       windowDidEnterFullscreen / windowDidExitFullscreen
+       event handlers
+    */
+    _sapp.fullscreen = !_sapp.fullscreen;
+    [_sapp_macos_window_obj toggleFullScreen:nil];
+}
+
 @implementation _sapp_macos_app_delegate
 - (void)applicationDidFinishLaunching:(NSNotification*)aNotification {
     _SOKOL_UNUSED(aNotification);
@@ -1873,6 +1898,16 @@ _SOKOL_PRIVATE void _sapp_macos_app_event(sapp_event_type type) {
 - (void)windowDidDeminiaturize:(NSNotification*)notification {
     _SOKOL_UNUSED(notification);
     _sapp_macos_app_event(SAPP_EVENTTYPE_RESTORED);
+}
+
+- (void)windowDidEnterFullScreen:(NSNotification*)notification {
+    _SOKOL_UNUSED(notification);
+    _sapp.fullscreen = true;
+}
+
+- (void)windowDidExitFullScreen:(NSNotification*)notification {
+    _SOKOL_UNUSED(notification);
+    _sapp.fullscreen = false;
 }
 @end
 
@@ -4694,8 +4729,8 @@ _SOKOL_PRIVATE void _sapp_win32_toggle_fullscreen(void) {
     _sapp.fullscreen = !_sapp.fullscreen;
     if (!_sapp.fullscreen) {
         win_style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX;
-        rect.right = (int) ((float)_sapp_def(_sapp.desc.width, 640) * _sapp_win32_window_scale);
-        rect.bottom = (int) ((float)_sapp_def(_sapp.desc.height, 480) * _sapp_win32_window_scale);
+        rect.right = (int) ((float)_sapp.desc.width * _sapp_win32_window_scale);
+        rect.bottom = (int) ((float)_sapp.desc.height * _sapp_win32_window_scale);
     }
     else {
         win_style = WS_POPUP | WS_SYSMENU | WS_VISIBLE;
@@ -8247,7 +8282,9 @@ SOKOL_API_DECL bool sapp_is_fullscreen(void) {
 }
 
 SOKOL_API_DECL void sapp_toggle_fullscreen(void) {
-    #if defined(_WIN32)
+    #if defined(__APPLE__) && !TARGET_OS_IPHONE
+    _sapp_macos_toggle_fullscreen();
+    #elif defined(_WIN32)
     _sapp_win32_toggle_fullscreen();
     #endif
 }
