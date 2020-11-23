@@ -456,7 +456,7 @@ inline void saudio_setup(const saudio_desc& desc) { return saudio_setup(&desc); 
 #endif
 
 #ifndef _SOKOL_PRIVATE
-    #if defined(__GNUC__)
+    #if defined(__GNUC__) || defined(__clang__)
         #define _SOKOL_PRIVATE __attribute__((unused)) static
     #else
         #define _SOKOL_PRIVATE static
@@ -472,6 +472,9 @@ inline void saudio_setup(const saudio_desc& desc) { return saudio_setup(&desc); 
 #elif defined(_WIN32)
     #ifndef WIN32_LEAN_AND_MEAN
     #define WIN32_LEAN_AND_MEAN
+    #endif
+    #ifndef NOMINMAX
+    #define NOMINMAX
     #endif
     #include <windows.h>
     #include <synchapi.h>
@@ -1129,7 +1132,7 @@ _SOKOL_PRIVATE DWORD WINAPI _saudio_wasapi_thread_fn(LPVOID param) {
         if (FAILED(IAudioClient_GetCurrentPadding(_saudio.backend.audio_client, &padding))) {
             continue;
         }
-        SOKOL_ASSERT(_saudio.backend.thread.dst_buffer_frames >= (int)padding);
+        SOKOL_ASSERT(_saudio.backend.thread.dst_buffer_frames >= padding);
         UINT32 num_frames = _saudio.backend.thread.dst_buffer_frames - padding;
         if (num_frames > 0) {
             _saudio_wasapi_submit_buffer(num_frames);

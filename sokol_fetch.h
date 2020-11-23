@@ -986,11 +986,15 @@ inline sfetch_handle_t sfetch_send(const sfetch_request_t& request) { return sfe
 #endif
 
 #ifndef _SOKOL_PRIVATE
-    #if defined(__GNUC__)
+    #if defined(__GNUC__) || defined(__clang__)
         #define _SOKOL_PRIVATE __attribute__((unused)) static
     #else
         #define _SOKOL_PRIVATE static
     #endif
+#endif
+
+#ifndef _SOKOL_UNUSED
+    #define _SOKOL_UNUSED(x) (void)(x)
 #endif
 
 #if defined(__EMSCRIPTEN__)
@@ -1002,6 +1006,9 @@ inline sfetch_handle_t sfetch_send(const sfetch_request_t& request) { return sfe
 #elif defined(_WIN32)
     #ifndef WIN32_LEAN_AND_MEAN
     #define WIN32_LEAN_AND_MEAN
+    #endif
+    #ifndef NOMINMAX
+    #define NOMINMAX
     #endif
     #include <windows.h>
     #define _SFETCH_PLATFORM_WINDOWS (1)
@@ -1692,6 +1699,7 @@ _SOKOL_PRIVATE void _sfetch_thread_join(_sfetch_thread_t* thread) {
         EnterCriticalSection(&thread->incoming_critsec);
         _sfetch_thread_request_stop(thread);
         BOOL set_event_res = SetEvent(thread->incoming_event);
+        _SOKOL_UNUSED(set_event_res);
         SOKOL_ASSERT(set_event_res);
         LeaveCriticalSection(&thread->incoming_critsec);
         WaitForSingleObject(thread->thread, INFINITE);
@@ -1726,6 +1734,7 @@ _SOKOL_PRIVATE void _sfetch_thread_enqueue_incoming(_sfetch_thread_t* thread, _s
         }
         LeaveCriticalSection(&thread->incoming_critsec);
         BOOL set_event_res = SetEvent(thread->incoming_event);
+        _SOKOL_UNUSED(set_event_res);
         SOKOL_ASSERT(set_event_res);
     }
 }
