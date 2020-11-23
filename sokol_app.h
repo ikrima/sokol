@@ -4789,7 +4789,8 @@ _SOKOL_PRIVATE bool _sapp_win32_wide_to_utf8(const wchar_t* src, char* dst, int 
 }
 
 _SOKOL_PRIVATE void _sapp_win32_toggle_fullscreen(void) {
-    HMONITOR monitor = MonitorFromWindow(_sapp_win32_hwnd, MONITOR_DEFAULTTONEAREST);
+    HWND main_hwnd = (HWND)sapp_win32_get_hwnd();
+    HMONITOR monitor = MonitorFromWindow(main_hwnd, MONITOR_DEFAULTTONEAREST);
     MONITORINFO minfo;
     memset(&minfo, 0, sizeof(minfo));
     minfo.cbSize = sizeof(MONITORINFO);
@@ -4821,8 +4822,8 @@ _SOKOL_PRIVATE void _sapp_win32_toggle_fullscreen(void) {
         rect.top = (monitor_h - win_height) / 2;
     }
 
-    SetWindowLongPtr(_sapp_win32_hwnd, GWL_STYLE, win_style);
-    SetWindowPos(_sapp_win32_hwnd, HWND_TOP, mr.left + rect.left, mr.top + rect.top, win_width, win_height, SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+    SetWindowLongPtr(main_hwnd, GWL_STYLE, win_style);
+    SetWindowPos(main_hwnd, HWND_TOP, mr.left + rect.left, mr.top + rect.top, win_width, win_height, SWP_SHOWWINDOW | SWP_FRAMECHANGED);
 }
 
 _SOKOL_PRIVATE void _sapp_win32_show_mouse(bool shown) {
@@ -7599,7 +7600,7 @@ _SOKOL_PRIVATE void _sapp_x11_set_fullscreen(bool enable) {
                                 0, 1, 0);
         }
         else {
-            const int _NET_WM_STATE_REMOVE = 0; 
+            const int _NET_WM_STATE_REMOVE = 0;
             _sapp_x11_send_event(_sapp_x11_NET_WM_STATE,
                                 _NET_WM_STATE_REMOVE,
                                 _sapp_x11_NET_WM_STATE_FULLSCREEN,
@@ -8534,7 +8535,7 @@ SOKOL_API_IMPL const void* sapp_win32_get_hwnd_window(sapp_window window) {
     }
     return 0;
 #else
-    return 0;    
+    return 0;
 #endif
 }
 SOKOL_API_IMPL const void* sapp_win32_get_hwnd(void) {
