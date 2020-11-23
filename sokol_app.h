@@ -104,7 +104,7 @@
     RESTORED            | YES     | YES   | YES   | ---   | ---     | ---   | ---
     SUSPENDED           | ---     | ---   | ---   | YES   | YES     | ---   | TODO
     RESUMED             | ---     | ---   | ---   | YES   | YES     | ---   | TODO
-    QUIT_REQUESTED      | YES     | YES   | YES   | ---   | ---     | TODO  | ---
+    QUIT_REQUESTED      | YES     | YES   | YES   | ---   | ---     | TODO  | YES
     UPDATE_CURSOR       | YES     | YES   | TODO  | ---   | ---     | ---   | TODO
     IME                 | TODO    | TODO? | TODO  | ???   | TODO    | ???   | ???
     key repeat flag     | YES     | YES   | YES   | ---   | ---     | TODO  | YES
@@ -422,36 +422,16 @@
 
     APPLICATION QUIT
     ================
-    Without special quit handling, a sokol_app.h application will exist
-    'gracefully' when the user clicks the window close-button. 'Graceful
-    exit' means that the application-provided cleanup callback will be
-    called.
+    Without special quit handling, a sokol_app.h application will quit
+    'gracefully' when the user clicks the window close-button unless a
+    platform's application model prevents this (e.g. on web or mobile).
+    'Graceful exit' means that the application-provided cleanup callback will
+    be called before the application quits.
 
-    This 'graceful exit' is only supported on native desktop platforms, on
-    the web and mobile platforms an application may be terminated at any time
-    by the user or browser/OS runtime environment without a chance to run
-    custom shutdown code.
-
-    On the web platform, you can call the following function to let the
-    browser open a standard popup dialog before the user wants to leave a site:
-
-        sapp_html5_ask_leave_site(bool ask);
-
-    The initial state of the associated internal flag can be provided
-    at startup via sapp_desc.html5_ask_leave_site.
-
-    This feature should only be used sparingly in critical situations - for
-    instance when the user would loose data - since popping up modal dialog
-    boxes is considered quite rude in the web world. Note that there's no way
-    to customize the content of this dialog box or run any code as a result
-    of the user's decision. Also note that the user must have interacted with
-    the site before the dialog box will appear. These are all security measures
-    to prevent fishing.
-
-    On native desktop platforms, sokol_app.h provides more control over the
+    On native desktop platforms sokol_app.h provides more control over the
     application-quit-process. It's possible to initiate a 'programmatic quit'
-    from the application code, and a quit initiated by the application user
-    can be intercepted (for instance to show a custom dialog box).
+    from the application code, and a quit initiated by the application user can
+    be intercepted (for instance to show a custom dialog box).
 
     This 'programmatic quit protocol' is implemented trough 3 functions
     and 1 event:
@@ -477,6 +457,37 @@
           sapp_request_quit() function. The event handler callback code can handle
           this event by calling sapp_cancel_quit() to cancel the quit.
           If the event is ignored, the application will quit as usual.
+
+    On the web platform, the quit behaviour differs from native platforms,
+    because of web-specific restrictions:
+
+    A `programmatic quit` initiated by calling sapp_quit() or
+    sapp_request_quit() will work as described above: the cleanup callback is
+    called, platform-specific cleanup is performed (on the web
+    this means that JS event handlers are unregisters), and then
+    the request-animation-loop will be exited. However that's all. The
+    web page itself will continue to exist (e.g. it's not possible to
+    programmatically close the browser tab).
+
+    On the web it's also not possible to run custom code when the user
+    closes a brower tab, so it's not possible to prevent this with a
+    fancy custom dialog box.
+
+    Instead the standard "Leave Site?" dialog box can be activated (or
+    deactivated) with the following function:
+
+        sapp_html5_ask_leave_site(bool ask);
+
+    The initial state of the associated internal flag can be provided
+    at startup via sapp_desc.html5_ask_leave_site.
+
+    This feature should only be used sparingly in critical situations - for
+    instance when the user would loose data - since popping up modal dialog
+    boxes is considered quite rude in the web world. Note that there's no way
+    to customize the content of this dialog box or run any code as a result
+    of the user's decision. Also note that the user must have interacted with
+    the site before the dialog box will appear. These are all security measures
+    to prevent fishing.
 
     The Dear ImGui HighDPI sample contains example code of how to
     implement a 'Really Quit?' dialog box with Dear ImGui (native desktop
@@ -2516,20 +2527,30 @@ EMSCRIPTEN_KEEPALIVE int _sapp_html5_get_ask_leave_site(void) {
     return _sapp.html5_ask_leave_site ? 1 : 0;
 }
 
-EM_JS(void, sapp_js_hook_beforeunload, (void), {
-    window.addEventListener('beforeunload', function(_sapp_event) {
+EM_JS(void, sapp_add_js_hook_beforeunload, (void), {
+    Module.sokol_beforeunload = function(_sapp_event) {
         if (__sapp_html5_get_ask_leave_site() != 0) {
             _sapp_event.preventDefault();
             _sapp_event.returnValue = ' ';
         }
-    });
+    };
+    window.addEventListener('beforeunload', Module.sokol_beforeunload);
 });
 
-EM_JS(void, sapp_js_init_clipboard, (void), {
-    window.addEventListener('paste', function(event) {
+EM_JS(void, sapp_remove_js_hook_beforeunload, (void), {
+    window.removeEventListener('beforeunload', Module.sokol_beforeunload);
+});
+
+EM_JS(void, sapp_add_js_hook_clipboard, (void), {
+    Module.sokol_paste = function(event) {
         var pasted_str = event.clipboardData.getData('text');
         ccall('_sapp_emsc_onpaste', 'void', ['string'], [pasted_str]);
-    });
+    };
+    window.addEventListener('paste', Module.sokol_paste);
+});
+
+EM_JS(void, sapp_remove_js_hook_clipboard, (void), {
+    window.removeEventListener('paste', Module.sokol_paste);
 });
 
 EM_JS(void, sapp_js_write_clipboard, (const char* c_str), {
@@ -3032,26 +3053,6 @@ _SOKOL_PRIVATE void _sapp_emsc_keytable_init(void) {
     _sapp.keycodes[224] = SAPP_KEYCODE_LEFT_SUPER;
 }
 
-_SOKOL_PRIVATE void _sapp_emsc_clipboard_init(void) {
-    sapp_js_init_clipboard();
-}
-
-_SOKOL_PRIVATE void _sapp_emsc_register_eventhandlers(void) {
-    emscripten_set_mousedown_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_mouse_cb);
-    emscripten_set_mouseup_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_mouse_cb);
-    emscripten_set_mousemove_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_mouse_cb);
-    emscripten_set_mouseenter_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_mouse_cb);
-    emscripten_set_mouseleave_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_mouse_cb);
-    emscripten_set_wheel_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_wheel_cb);
-    emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, true, _sapp_emsc_key_cb);
-    emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, true, _sapp_emsc_key_cb);
-    emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, true, _sapp_emsc_key_cb);
-    emscripten_set_touchstart_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_touch_cb);
-    emscripten_set_touchmove_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_touch_cb);
-    emscripten_set_touchend_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_touch_cb);
-    emscripten_set_touchcancel_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_touch_cb);
-}
-
 #if defined(SOKOL_GLES2) || defined(SOKOL_GLES3)
 _SOKOL_PRIVATE EM_BOOL _sapp_emsc_webgl_context_cb(int emsc_type, const void* reserved, void* user_data) {
     sapp_event_type type;
@@ -3096,9 +3097,6 @@ _SOKOL_PRIVATE void _sapp_emsc_webgl_init(void) {
 
     /* some WebGL extension are not enabled automatically by emscripten */
     emscripten_webgl_enable_extension(ctx, "WEBKIT_WEBGL_compressed_texture_pvrtc");
-
-    emscripten_set_webglcontextlost_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_webgl_context_cb);
-    emscripten_set_webglcontextrestored_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_webgl_context_cb);
 }
 #endif
 
@@ -3206,6 +3204,54 @@ _SOKOL_PRIVATE void _sapp_emsc_wgpu_next_frame(void) {
 }
 #endif
 
+_SOKOL_PRIVATE void _sapp_emsc_register_eventhandlers(void) {
+    emscripten_set_mousedown_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_mouse_cb);
+    emscripten_set_mouseup_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_mouse_cb);
+    emscripten_set_mousemove_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_mouse_cb);
+    emscripten_set_mouseenter_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_mouse_cb);
+    emscripten_set_mouseleave_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_mouse_cb);
+    emscripten_set_wheel_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_wheel_cb);
+    emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, true, _sapp_emsc_key_cb);
+    emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, true, _sapp_emsc_key_cb);
+    emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, true, _sapp_emsc_key_cb);
+    emscripten_set_touchstart_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_touch_cb);
+    emscripten_set_touchmove_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_touch_cb);
+    emscripten_set_touchend_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_touch_cb);
+    emscripten_set_touchcancel_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_touch_cb);
+    sapp_add_js_hook_beforeunload();
+    if (_sapp.clipboard_enabled) {
+        sapp_add_js_hook_clipboard();
+    }
+    #if defined(SOKOL_GLES2) || defined(SOKOL_GLES3)
+        emscripten_set_webglcontextlost_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_webgl_context_cb);
+        emscripten_set_webglcontextrestored_callback(_sapp.html5_canvas_name, 0, true, _sapp_emsc_webgl_context_cb);
+    #endif
+}
+
+_SOKOL_PRIVATE void _sapp_emsc_unregister_eventhandlers() {
+    emscripten_set_mousedown_callback(_sapp.html5_canvas_name, 0, true, 0);
+    emscripten_set_mouseup_callback(_sapp.html5_canvas_name, 0, true, 0);
+    emscripten_set_mousemove_callback(_sapp.html5_canvas_name, 0, true, 0);
+    emscripten_set_mouseenter_callback(_sapp.html5_canvas_name, 0, true, 0);
+    emscripten_set_mouseleave_callback(_sapp.html5_canvas_name, 0, true, 0);
+    emscripten_set_wheel_callback(_sapp.html5_canvas_name, 0, true, 0);
+    emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, true, 0);
+    emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, true, 0);
+    emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, true, 0);
+    emscripten_set_touchstart_callback(_sapp.html5_canvas_name, 0, true, 0);
+    emscripten_set_touchmove_callback(_sapp.html5_canvas_name, 0, true, 0);
+    emscripten_set_touchend_callback(_sapp.html5_canvas_name, 0, true, 0);
+    emscripten_set_touchcancel_callback(_sapp.html5_canvas_name, 0, true, 0);
+    sapp_remove_js_hook_beforeunload();
+    if (_sapp.clipboard_enabled) {
+        sapp_remove_js_hook_clipboard();
+    }
+    #if defined(SOKOL_GLES2) || defined(SOKOL_GLES3)
+        emscripten_set_webglcontextlost_callback(_sapp.html5_canvas_name, 0, true, 0);
+        emscripten_set_webglcontextrestored_callback(_sapp.html5_canvas_name, 0, true, 0);
+    #endif
+}
+
 _SOKOL_PRIVATE EM_BOOL _sapp_emsc_frame(double time, void* userData) {
     _SOKOL_UNUSED(time);
     _SOKOL_UNUSED(userData);
@@ -3235,6 +3281,20 @@ _SOKOL_PRIVATE EM_BOOL _sapp_emsc_frame(double time, void* userData) {
         /* WebGL code path */
         _sapp_frame();
     #endif
+
+    /* quit-handling */
+    if (_sapp.quit_requested) {
+        _sapp_init_event(SAPP_EVENTTYPE_QUIT_REQUESTED);
+        _sapp_call_event(&_sapp.event);
+        if (_sapp.quit_requested) {
+            _sapp.quit_ordered = true;
+        }
+    }
+    if (_sapp.quit_ordered) {
+        _sapp_emsc_unregister_eventhandlers();
+        _sapp_call_cleanup();
+        return EM_FALSE;
+    }
     return EM_TRUE;
 }
 
@@ -3242,9 +3302,6 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
     memset(&_sapp_emsc, 0, sizeof(_sapp_emsc));
     _sapp_init_state(desc);
     _sapp_emsc_keytable_init();
-    if (_sapp.clipboard_enabled) {
-        _sapp_emsc_clipboard_init();
-    }
     double w, h;
     if (_sapp.desc.html5_canvas_resize) {
         w = (double) _sapp.desc.width;
@@ -3269,7 +3326,6 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
     #endif
     _sapp.valid = true;
     _sapp_emsc_register_eventhandlers();
-    sapp_js_hook_beforeunload();
 
     /* start the frame loop */
     emscripten_request_animation_frame_loop(_sapp_emsc_frame, 0);
