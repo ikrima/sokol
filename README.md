@@ -16,27 +16,27 @@ Simple
 [STB-style](https://github.com/nothings/stb/blob/master/docs/stb_howto.txt)
 cross-platform libraries for C and C++, written in C.
 
-[See what's new](#updates) (**10-Oct-2020** sokol_app.h win32/uwp: D3D11/DXGI swapchain code modernization)
+[See what's new](#updates) (**22-Oct-2020** sokol_app.h: initial drag'n'drop support for win32/macos/linux)
 
 [Live Samples](https://floooh.github.io/sokol-html5/index.html) via WASM.
 
 Cross-platform libraries:
 
-- **sokol\_gfx.h**: 3D-API wrapper (GL + Metal + D3D11)
-- **sokol\_app.h**: app framework wrapper (entry + window + 3D-context + input)
-- **sokol\_time.h**: time measurement
-- **sokol\_audio.h**: minimal buffer-streaming audio playback
-- **sokol\_fetch.h**: asynchronous data streaming from HTTP and local filesystem
-- **sokol\_args.h**: unified cmdline/URL arg parser for web and native apps
+- [**sokol\_gfx.h**](https://github.com/floooh/sokol/blob/master/sokol_gfx.h): 3D-API wrapper (GL + Metal + D3D11)
+- [**sokol\_app.h**](https://github.com/floooh/sokol/blob/master/sokol_app.h): app framework wrapper (entry + window + 3D-context + input)
+- [**sokol\_time.h**](https://github.com/floooh/sokol/blob/master/sokol_time.h): time measurement
+- [**sokol\_audio.h**](https://github.com/floooh/sokol/blob/master/sokol_audio.h): minimal buffer-streaming audio playback
+- [**sokol\_fetch.h**](https://github.com/floooh/sokol/blob/master/sokol_fetch.h): asynchronous data streaming from HTTP and local filesystem
+- [**sokol\_args.h**](https://github.com/floooh/sokol/blob/master/sokol_args.h): unified cmdline/URL arg parser for web and native apps
 
 Utility libraries:
 
-- **sokol\_imgui.h**: sokol_gfx.h rendering backend for [Dear ImGui](https://github.com/ocornut/imgui)
-- **sokol\_gl.h**: OpenGL 1.x style immediate-mode rendering API on top of sokol_gfx.h
-- **sokol\_fontstash.h**: sokol_gl.h rendering backend for [fontstash](https://github.com/memononen/fontstash)
-- **sokol\_gfx\_imgui.h**: debug-inspection UI for sokol_gfx.h (implemented with Dear ImGui)
-- **sokol\_debugtext.h**: a simple text renderer using vintage home computer fonts
-- **sokol\_memtrack.h**: easily track memory allocations in sokol headers
+- [**sokol\_imgui.h**](https://github.com/floooh/sokol/blob/master/util/sokol_imgui.h): sokol_gfx.h rendering backend for [Dear ImGui](https://github.com/ocornut/imgui)
+- [**sokol\_gl.h**](https://github.com/floooh/sokol/blob/master/util/sokol_gl.h): OpenGL 1.x style immediate-mode rendering API on top of sokol_gfx.h
+- [**sokol\_fontstash.h**](https://github.com/floooh/sokol/blob/master/util/sokol_fontstash.h): sokol_gl.h rendering backend for [fontstash](https://github.com/memononen/fontstash)
+- [**sokol\_gfx\_imgui.h**](https://github.com/floooh/sokol/blob/master/util/sokol_gfx_imgui.h): debug-inspection UI for sokol_gfx.h (implemented with Dear ImGui)
+- [**sokol\_debugtext.h**](https://github.com/floooh/sokol/blob/master/util/sokol_debugtext.h): a simple text renderer using vintage home computer fonts
+- [**sokol\_memtrack.h**](https://github.com/floooh/sokol/blob/master/util/sokol_memtrack.h): easily track memory allocations in sokol headers
 
 WebAssembly is a 'first-class citizen', one important motivation for the
 Sokol headers is to provide a collection of cross-platform APIs with a
@@ -441,6 +441,19 @@ See the sokol_args.h header for a more complete documentation, and the [Tiny
 Emulators](https://floooh.github.io/tiny8bit/) for more interesting usage examples.
 
 # Updates
+
+- **22-Oct-2020**: sokol_app.h now has file drag'n'drop support on Win32,
+  macOS and Linux. WASM/HTML5 support will be added soon-ish. This will
+  work a bit differently because of security-related restrictions in the
+  HTML5 drag'n'drop API, but more on that later. For documentation,
+  search for 'DRAG AND DROP SUPPORT' in [sokol_app.h](https://github.com/floooh/sokol/blob/master/sokol_app.h).
+
+  Check out [events-sapp.c](https://github.com/floooh/sokol-samples/blob/master/sapp/events-sapp.cc)
+  for a simple usage example (I will also add a more real-world example to my
+  chips emulators once the WASM/HTML5 implementation is ready).
+
+  Many thanks for @prime31 and @hb3p8 for the initial PRs and valuable feature
+  discussions!
 
 - **10-Oct-2020**: Improvements to the sokol_app.h Win32+D3D11 and UWP+D3D11 swapchain code:
   - In the Win32+D3D11 backend and when running on Win10,
