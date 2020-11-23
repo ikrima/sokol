@@ -63,6 +63,9 @@
     GL header-generator/loader instead, define SOKOL_WIN32_NO_GL_LOADER
     before including the implementation part of sokol_app.h.
 
+    To make use of the integrated GL loader, simply include the sokol_app.h
+    implementation before the sokol_gfx.h implementation.
+
     For example code, see https://github.com/floooh/sokol-samples/tree/master/sapp
 
     FEATURE OVERVIEW
@@ -1324,6 +1327,8 @@ typedef struct {
 
 /*== EMSCRIPTEN DECLARATIONS =================================================*/
 #if defined(_SAPP_EMSCRIPTEN)
+
+#if defined(SOKOL_WGPU)
 typedef struct {
     int state;
     WGPUDevice device;
@@ -1335,6 +1340,7 @@ typedef struct {
     WGPUTextureView msaa_view;
     WGPUTextureView depth_stencil_view;
 } _sapp_wgpu_t;
+#endif
 
 typedef struct {
     bool textfield_created;
@@ -1793,6 +1799,368 @@ _SOKOL_PRIVATE int _sapp_destroy_window(sapp_window handle) {
      return window != 0;
 }
 
+/*=== OPTIONAL MINI GL LOADER FOR WIN32/WGL ==================================*/
+#if defined(_SAPP_WIN32) && defined(SOKOL_GLCORE33) && !defined(SOKOL_WIN32_NO_GL_LOADER)
+#define __gl_h_ 1
+#define __gl32_h_ 1
+#define __gl31_h_ 1
+#define __GL_H__ 1
+#define __glext_h_ 1
+#define __GLEXT_H_ 1
+#define __gltypes_h_ 1
+#define __glcorearb_h_ 1
+#define __gl_glcorearb_h_ 1
+#define GL_APIENTRY APIENTRY
+
+typedef unsigned int  GLenum;
+typedef unsigned int  GLuint;
+typedef int  GLsizei;
+typedef char  GLchar;
+typedef ptrdiff_t  GLintptr;
+typedef ptrdiff_t  GLsizeiptr;
+typedef double  GLclampd;
+typedef unsigned short  GLushort;
+typedef unsigned char  GLubyte;
+typedef unsigned char  GLboolean;
+typedef uint64_t  GLuint64;
+typedef double  GLdouble;
+typedef unsigned short  GLhalf;
+typedef float  GLclampf;
+typedef unsigned int  GLbitfield;
+typedef signed char  GLbyte;
+typedef short  GLshort;
+typedef void  GLvoid;
+typedef int64_t  GLint64;
+typedef float  GLfloat;
+typedef struct __GLsync * GLsync;
+typedef int  GLint;
+#define GL_INT_2_10_10_10_REV 0x8D9F
+#define GL_R32F 0x822E
+#define GL_PROGRAM_POINT_SIZE 0x8642
+#define GL_STENCIL_ATTACHMENT 0x8D20
+#define GL_DEPTH_ATTACHMENT 0x8D00
+#define GL_COLOR_ATTACHMENT2 0x8CE2
+#define GL_COLOR_ATTACHMENT0 0x8CE0
+#define GL_R16F 0x822D
+#define GL_COLOR_ATTACHMENT22 0x8CF6
+#define GL_DRAW_FRAMEBUFFER 0x8CA9
+#define GL_FRAMEBUFFER_COMPLETE 0x8CD5
+#define GL_NUM_EXTENSIONS 0x821D
+#define GL_INFO_LOG_LENGTH 0x8B84
+#define GL_VERTEX_SHADER 0x8B31
+#define GL_INCR 0x1E02
+#define GL_DYNAMIC_DRAW 0x88E8
+#define GL_STATIC_DRAW 0x88E4
+#define GL_TEXTURE_CUBE_MAP_POSITIVE_Z 0x8519
+#define GL_TEXTURE_CUBE_MAP 0x8513
+#define GL_FUNC_SUBTRACT 0x800A
+#define GL_FUNC_REVERSE_SUBTRACT 0x800B
+#define GL_CONSTANT_COLOR 0x8001
+#define GL_DECR_WRAP 0x8508
+#define GL_R8 0x8229
+#define GL_LINEAR_MIPMAP_LINEAR 0x2703
+#define GL_ELEMENT_ARRAY_BUFFER 0x8893
+#define GL_SHORT 0x1402
+#define GL_DEPTH_TEST 0x0B71
+#define GL_TEXTURE_CUBE_MAP_NEGATIVE_Y 0x8518
+#define GL_LINK_STATUS 0x8B82
+#define GL_TEXTURE_CUBE_MAP_POSITIVE_Y 0x8517
+#define GL_SAMPLE_ALPHA_TO_COVERAGE 0x809E
+#define GL_RGBA16F 0x881A
+#define GL_CONSTANT_ALPHA 0x8003
+#define GL_READ_FRAMEBUFFER 0x8CA8
+#define GL_TEXTURE0 0x84C0
+#define GL_TEXTURE_MIN_LOD 0x813A
+#define GL_CLAMP_TO_EDGE 0x812F
+#define GL_UNSIGNED_SHORT_5_6_5 0x8363
+#define GL_TEXTURE_WRAP_R 0x8072
+#define GL_UNSIGNED_SHORT_5_5_5_1 0x8034
+#define GL_NEAREST_MIPMAP_NEAREST 0x2700
+#define GL_UNSIGNED_SHORT_4_4_4_4 0x8033
+#define GL_SRC_ALPHA_SATURATE 0x0308
+#define GL_STREAM_DRAW 0x88E0
+#define GL_ONE 1
+#define GL_NEAREST_MIPMAP_LINEAR 0x2702
+#define GL_RGB10_A2 0x8059
+#define GL_RGBA8 0x8058
+#define GL_COLOR_ATTACHMENT1 0x8CE1
+#define GL_RGBA4 0x8056
+#define GL_RGB8 0x8051
+#define GL_ARRAY_BUFFER 0x8892
+#define GL_STENCIL 0x1802
+#define GL_TEXTURE_2D 0x0DE1
+#define GL_DEPTH 0x1801
+#define GL_FRONT 0x0404
+#define GL_STENCIL_BUFFER_BIT 0x00000400
+#define GL_REPEAT 0x2901
+#define GL_RGBA 0x1908
+#define GL_TEXTURE_CUBE_MAP_POSITIVE_X 0x8515
+#define GL_DECR 0x1E03
+#define GL_FRAGMENT_SHADER 0x8B30
+#define GL_FLOAT 0x1406
+#define GL_TEXTURE_MAX_LOD 0x813B
+#define GL_DEPTH_COMPONENT 0x1902
+#define GL_ONE_MINUS_DST_ALPHA 0x0305
+#define GL_COLOR 0x1800
+#define GL_TEXTURE_2D_ARRAY 0x8C1A
+#define GL_TRIANGLES 0x0004
+#define GL_UNSIGNED_BYTE 0x1401
+#define GL_TEXTURE_MAG_FILTER 0x2800
+#define GL_ONE_MINUS_CONSTANT_ALPHA 0x8004
+#define GL_NONE 0
+#define GL_SRC_COLOR 0x0300
+#define GL_BYTE 0x1400
+#define GL_TEXTURE_CUBE_MAP_NEGATIVE_Z 0x851A
+#define GL_LINE_STRIP 0x0003
+#define GL_TEXTURE_3D 0x806F
+#define GL_CW 0x0900
+#define GL_LINEAR 0x2601
+#define GL_RENDERBUFFER 0x8D41
+#define GL_GEQUAL 0x0206
+#define GL_COLOR_BUFFER_BIT 0x00004000
+#define GL_RGBA32F 0x8814
+#define GL_BLEND 0x0BE2
+#define GL_ONE_MINUS_SRC_ALPHA 0x0303
+#define GL_ONE_MINUS_CONSTANT_COLOR 0x8002
+#define GL_TEXTURE_WRAP_T 0x2803
+#define GL_TEXTURE_WRAP_S 0x2802
+#define GL_TEXTURE_MIN_FILTER 0x2801
+#define GL_LINEAR_MIPMAP_NEAREST 0x2701
+#define GL_EXTENSIONS 0x1F03
+#define GL_NO_ERROR 0
+#define GL_REPLACE 0x1E01
+#define GL_KEEP 0x1E00
+#define GL_CCW 0x0901
+#define GL_TEXTURE_CUBE_MAP_NEGATIVE_X 0x8516
+#define GL_RGB 0x1907
+#define GL_TRIANGLE_STRIP 0x0005
+#define GL_FALSE 0
+#define GL_ZERO 0
+#define GL_CULL_FACE 0x0B44
+#define GL_INVERT 0x150A
+#define GL_INT 0x1404
+#define GL_UNSIGNED_INT 0x1405
+#define GL_UNSIGNED_SHORT 0x1403
+#define GL_NEAREST 0x2600
+#define GL_SCISSOR_TEST 0x0C11
+#define GL_LEQUAL 0x0203
+#define GL_STENCIL_TEST 0x0B90
+#define GL_DITHER 0x0BD0
+#define GL_DEPTH_COMPONENT16 0x81A5
+#define GL_EQUAL 0x0202
+#define GL_FRAMEBUFFER 0x8D40
+#define GL_RGB5 0x8050
+#define GL_LINES 0x0001
+#define GL_DEPTH_BUFFER_BIT 0x00000100
+#define GL_SRC_ALPHA 0x0302
+#define GL_INCR_WRAP 0x8507
+#define GL_LESS 0x0201
+#define GL_MULTISAMPLE 0x809D
+#define GL_FRAMEBUFFER_BINDING 0x8CA6
+#define GL_BACK 0x0405
+#define GL_ALWAYS 0x0207
+#define GL_FUNC_ADD 0x8006
+#define GL_ONE_MINUS_DST_COLOR 0x0307
+#define GL_NOTEQUAL 0x0205
+#define GL_DST_COLOR 0x0306
+#define GL_COMPILE_STATUS 0x8B81
+#define GL_RED 0x1903
+#define GL_COLOR_ATTACHMENT3 0x8CE3
+#define GL_DST_ALPHA 0x0304
+#define GL_RGB5_A1 0x8057
+#define GL_GREATER 0x0204
+#define GL_POLYGON_OFFSET_FILL 0x8037
+#define GL_TRUE 1
+#define GL_NEVER 0x0200
+#define GL_POINTS 0x0000
+#define GL_ONE_MINUS_SRC_COLOR 0x0301
+#define GL_MIRRORED_REPEAT 0x8370
+#define GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS 0x8B4D
+#define GL_R11F_G11F_B10F 0x8C3A
+#define GL_UNSIGNED_INT_10F_11F_11F_REV 0x8C3B
+#define GL_RGBA32UI 0x8D70
+#define GL_RGB32UI 0x8D71
+#define GL_RGBA16UI 0x8D76
+#define GL_RGB16UI 0x8D77
+#define GL_RGBA8UI 0x8D7C
+#define GL_RGB8UI 0x8D7D
+#define GL_RGBA32I 0x8D82
+#define GL_RGB32I 0x8D83
+#define GL_RGBA16I 0x8D88
+#define GL_RGB16I 0x8D89
+#define GL_RGBA8I 0x8D8E
+#define GL_RGB8I 0x8D8F
+#define GL_RED_INTEGER 0x8D94
+#define GL_RG 0x8227
+#define GL_RG_INTEGER 0x8228
+#define GL_R8 0x8229
+#define GL_R16 0x822A
+#define GL_RG8 0x822B
+#define GL_RG16 0x822C
+#define GL_R16F 0x822D
+#define GL_R32F 0x822E
+#define GL_RG16F 0x822F
+#define GL_RG32F 0x8230
+#define GL_R8I 0x8231
+#define GL_R8UI 0x8232
+#define GL_R16I 0x8233
+#define GL_R16UI 0x8234
+#define GL_R32I 0x8235
+#define GL_R32UI 0x8236
+#define GL_RG8I 0x8237
+#define GL_RG8UI 0x8238
+#define GL_RG16I 0x8239
+#define GL_RG16UI 0x823A
+#define GL_RG32I 0x823B
+#define GL_RG32UI 0x823C
+#define GL_RGBA_INTEGER 0x8D99
+#define GL_R8_SNORM 0x8F94
+#define GL_RG8_SNORM 0x8F95
+#define GL_RGB8_SNORM 0x8F96
+#define GL_RGBA8_SNORM 0x8F97
+#define GL_R16_SNORM 0x8F98
+#define GL_RG16_SNORM 0x8F99
+#define GL_RGB16_SNORM 0x8F9A
+#define GL_RGBA16_SNORM 0x8F9B
+#define GL_RGBA16 0x805B
+#define GL_MAX_TEXTURE_SIZE 0x0D33
+#define GL_MAX_CUBE_MAP_TEXTURE_SIZE 0x851C
+#define GL_MAX_3D_TEXTURE_SIZE 0x8073
+#define GL_MAX_ARRAY_TEXTURE_LAYERS 0x88FF
+#define GL_MAX_VERTEX_ATTRIBS 0x8869
+#define GL_CLAMP_TO_BORDER 0x812D
+#define GL_TEXTURE_BORDER_COLOR 0x1004
+#define GL_CURRENT_PROGRAM 0x8B8D
+
+// X Macro list of GL function names and signatures
+#define _SAPP_GL_FUNCS \
+    _SAPP_XMACRO(glBindVertexArray,                 void, (GLuint array)) \
+    _SAPP_XMACRO(glFramebufferTextureLayer,         void, (GLenum target, GLenum attachment, GLuint texture, GLint level, GLint layer)) \
+    _SAPP_XMACRO(glGenFramebuffers,                 void, (GLsizei n, GLuint * framebuffers)) \
+    _SAPP_XMACRO(glBindFramebuffer,                 void, (GLenum target, GLuint framebuffer)) \
+    _SAPP_XMACRO(glBindRenderbuffer,                void, (GLenum target, GLuint renderbuffer)) \
+    _SAPP_XMACRO(glGetStringi,                      const GLubyte *, (GLenum name, GLuint index)) \
+    _SAPP_XMACRO(glClearBufferfi,                   void, (GLenum buffer, GLint drawbuffer, GLfloat depth, GLint stencil)) \
+    _SAPP_XMACRO(glClearBufferfv,                   void, (GLenum buffer, GLint drawbuffer, const GLfloat * value)) \
+    _SAPP_XMACRO(glClearBufferuiv,                  void, (GLenum buffer, GLint drawbuffer, const GLuint * value)) \
+    _SAPP_XMACRO(glDeleteRenderbuffers,             void, (GLsizei n, const GLuint * renderbuffers)) \
+    _SAPP_XMACRO(glUniform4fv,                      void, (GLint location, GLsizei count, const GLfloat * value)) \
+    _SAPP_XMACRO(glUniform2fv,                      void, (GLint location, GLsizei count, const GLfloat * value)) \
+    _SAPP_XMACRO(glUseProgram,                      void, (GLuint program)) \
+    _SAPP_XMACRO(glShaderSource,                    void, (GLuint shader, GLsizei count, const GLchar *const* string, const GLint * length)) \
+    _SAPP_XMACRO(glLinkProgram,                     void, (GLuint program)) \
+    _SAPP_XMACRO(glGetUniformLocation,              GLint, (GLuint program, const GLchar * name)) \
+    _SAPP_XMACRO(glGetShaderiv,                     void, (GLuint shader, GLenum pname, GLint * params)) \
+    _SAPP_XMACRO(glGetProgramInfoLog,               void, (GLuint program, GLsizei bufSize, GLsizei * length, GLchar * infoLog)) \
+    _SAPP_XMACRO(glGetAttribLocation,               GLint, (GLuint program, const GLchar * name)) \
+    _SAPP_XMACRO(glDisableVertexAttribArray,        void, (GLuint index)) \
+    _SAPP_XMACRO(glDeleteShader,                    void, (GLuint shader)) \
+    _SAPP_XMACRO(glDeleteProgram,                   void, (GLuint program)) \
+    _SAPP_XMACRO(glCompileShader,                   void, (GLuint shader)) \
+    _SAPP_XMACRO(glStencilFuncSeparate,             void, (GLenum face, GLenum func, GLint ref, GLuint mask)) \
+    _SAPP_XMACRO(glStencilOpSeparate,               void, (GLenum face, GLenum sfail, GLenum dpfail, GLenum dppass)) \
+    _SAPP_XMACRO(glRenderbufferStorageMultisample,  void, (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height)) \
+    _SAPP_XMACRO(glDrawBuffers,                     void, (GLsizei n, const GLenum * bufs)) \
+    _SAPP_XMACRO(glVertexAttribDivisor,             void, (GLuint index, GLuint divisor)) \
+    _SAPP_XMACRO(glBufferSubData,                   void, (GLenum target, GLintptr offset, GLsizeiptr size, const void * data)) \
+    _SAPP_XMACRO(glGenBuffers,                      void, (GLsizei n, GLuint * buffers)) \
+    _SAPP_XMACRO(glCheckFramebufferStatus,          GLenum, (GLenum target)) \
+    _SAPP_XMACRO(glFramebufferRenderbuffer,         void, (GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer)) \
+    _SAPP_XMACRO(glCompressedTexImage2D,            void, (GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const void * data)) \
+    _SAPP_XMACRO(glCompressedTexImage3D,            void, (GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLsizei imageSize, const void * data)) \
+    _SAPP_XMACRO(glActiveTexture,                   void, (GLenum texture)) \
+    _SAPP_XMACRO(glTexSubImage3D,                   void, (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const void * pixels)) \
+    _SAPP_XMACRO(glUniformMatrix4fv,                void, (GLint location, GLsizei count, GLboolean transpose, const GLfloat * value)) \
+    _SAPP_XMACRO(glRenderbufferStorage,             void, (GLenum target, GLenum internalformat, GLsizei width, GLsizei height)) \
+    _SAPP_XMACRO(glGenTextures,                     void, (GLsizei n, GLuint * textures)) \
+    _SAPP_XMACRO(glPolygonOffset,                   void, (GLfloat factor, GLfloat units)) \
+    _SAPP_XMACRO(glDrawElements,                    void, (GLenum mode, GLsizei count, GLenum type, const void * indices)) \
+    _SAPP_XMACRO(glDeleteFramebuffers,              void, (GLsizei n, const GLuint * framebuffers)) \
+    _SAPP_XMACRO(glBlendEquationSeparate,           void, (GLenum modeRGB, GLenum modeAlpha)) \
+    _SAPP_XMACRO(glDeleteTextures,                  void, (GLsizei n, const GLuint * textures)) \
+    _SAPP_XMACRO(glGetProgramiv,                    void, (GLuint program, GLenum pname, GLint * params)) \
+    _SAPP_XMACRO(glBindTexture,                     void, (GLenum target, GLuint texture)) \
+    _SAPP_XMACRO(glTexImage3D,                      void, (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const void * pixels)) \
+    _SAPP_XMACRO(glCreateShader,                    GLuint, (GLenum type)) \
+    _SAPP_XMACRO(glTexSubImage2D,                   void, (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void * pixels)) \
+    _SAPP_XMACRO(glClearDepth,                      void, (GLdouble depth)) \
+    _SAPP_XMACRO(glFramebufferTexture2D,            void, (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level)) \
+    _SAPP_XMACRO(glCreateProgram,                   GLuint, (void)) \
+    _SAPP_XMACRO(glViewport,                        void, (GLint x, GLint y, GLsizei width, GLsizei height)) \
+    _SAPP_XMACRO(glDeleteBuffers,                   void, (GLsizei n, const GLuint * buffers)) \
+    _SAPP_XMACRO(glDrawArrays,                      void, (GLenum mode, GLint first, GLsizei count)) \
+    _SAPP_XMACRO(glDrawElementsInstanced,           void, (GLenum mode, GLsizei count, GLenum type, const void * indices, GLsizei instancecount)) \
+    _SAPP_XMACRO(glVertexAttribPointer,             void, (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void * pointer)) \
+    _SAPP_XMACRO(glUniform1i,                       void, (GLint location, GLint v0)) \
+    _SAPP_XMACRO(glDisable,                         void, (GLenum cap)) \
+    _SAPP_XMACRO(glColorMask,                       void, (GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha)) \
+    _SAPP_XMACRO(glBindBuffer,                      void, (GLenum target, GLuint buffer)) \
+    _SAPP_XMACRO(glDeleteVertexArrays,              void, (GLsizei n, const GLuint * arrays)) \
+    _SAPP_XMACRO(glDepthMask,                       void, (GLboolean flag)) \
+    _SAPP_XMACRO(glDrawArraysInstanced,             void, (GLenum mode, GLint first, GLsizei count, GLsizei instancecount)) \
+    _SAPP_XMACRO(glClearStencil,                    void, (GLint s)) \
+    _SAPP_XMACRO(glScissor,                         void, (GLint x, GLint y, GLsizei width, GLsizei height)) \
+    _SAPP_XMACRO(glUniform3fv,                      void, (GLint location, GLsizei count, const GLfloat * value)) \
+    _SAPP_XMACRO(glGenRenderbuffers,                void, (GLsizei n, GLuint * renderbuffers)) \
+    _SAPP_XMACRO(glBufferData,                      void, (GLenum target, GLsizeiptr size, const void * data, GLenum usage)) \
+    _SAPP_XMACRO(glBlendFuncSeparate,               void, (GLenum sfactorRGB, GLenum dfactorRGB, GLenum sfactorAlpha, GLenum dfactorAlpha)) \
+    _SAPP_XMACRO(glTexParameteri,                   void, (GLenum target, GLenum pname, GLint param)) \
+    _SAPP_XMACRO(glGetIntegerv,                     void, (GLenum pname, GLint * data)) \
+    _SAPP_XMACRO(glEnable,                          void, (GLenum cap)) \
+    _SAPP_XMACRO(glBlitFramebuffer,                 void, (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter)) \
+    _SAPP_XMACRO(glStencilMask,                     void, (GLuint mask)) \
+    _SAPP_XMACRO(glAttachShader,                    void, (GLuint program, GLuint shader)) \
+    _SAPP_XMACRO(glGetError,                        GLenum, (void)) \
+    _SAPP_XMACRO(glClearColor,                      void, (GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha)) \
+    _SAPP_XMACRO(glBlendColor,                      void, (GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha)) \
+    _SAPP_XMACRO(glTexParameterf,                   void, (GLenum target, GLenum pname, GLfloat param)) \
+    _SAPP_XMACRO(glTexParameterfv,                  void, (GLenum target, GLenum pname, GLfloat* params)) \
+    _SAPP_XMACRO(glGetShaderInfoLog,                void, (GLuint shader, GLsizei bufSize, GLsizei * length, GLchar * infoLog)) \
+    _SAPP_XMACRO(glDepthFunc,                       void, (GLenum func)) \
+    _SAPP_XMACRO(glStencilOp ,                      void, (GLenum fail, GLenum zfail, GLenum zpass)) \
+    _SAPP_XMACRO(glStencilFunc,                     void, (GLenum func, GLint ref, GLuint mask)) \
+    _SAPP_XMACRO(glEnableVertexAttribArray,         void, (GLuint index)) \
+    _SAPP_XMACRO(glBlendFunc,                       void, (GLenum sfactor, GLenum dfactor)) \
+    _SAPP_XMACRO(glUniform1fv,                      void, (GLint location, GLsizei count, const GLfloat * value)) \
+    _SAPP_XMACRO(glReadBuffer,                      void, (GLenum src)) \
+    _SAPP_XMACRO(glClear,                           void, (GLbitfield mask)) \
+    _SAPP_XMACRO(glTexImage2D,                      void, (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void * pixels)) \
+    _SAPP_XMACRO(glGenVertexArrays,                 void, (GLsizei n, GLuint * arrays)) \
+    _SAPP_XMACRO(glFrontFace,                       void, (GLenum mode)) \
+    _SAPP_XMACRO(glCullFace,                        void, (GLenum mode))
+
+// generate GL function pointer typedefs
+#define _SAPP_XMACRO(name, ret, args) typedef ret (GL_APIENTRY* PFN_ ## name) args;
+_SAPP_GL_FUNCS
+#undef _SAPP_XMACRO
+
+// generate GL function pointers
+#define _SAPP_XMACRO(name, ret, args) static PFN_ ## name name;
+_SAPP_GL_FUNCS
+#undef _SAPP_XMACRO
+
+// helper function to lookup GL functions in GL DLL
+_SOKOL_PRIVATE void* _sapp_win32_glgetprocaddr(const char* name) {
+    void* proc_addr = (void*) _sapp.wgl.GetProcAddress(name);
+    if (0 == proc_addr) {
+        proc_addr = (void*) GetProcAddress(_sapp.wgl.opengl32, name);
+    }
+    SOKOL_ASSERT(proc_addr);
+    return proc_addr;
+}
+
+// populate GL function pointers
+_SOKOL_PRIVATE  void _sapp_win32_gl_loadfuncs(void) {
+    SOKOL_ASSERT(_sapp.wgl.GetProcAddress);
+    SOKOL_ASSERT(_sapp.wgl.opengl32);
+    #define _SAPP_XMACRO(name, ret, args) name = (PFN_ ## name) _sapp_win32_glgetprocaddr(#name);
+    _SAPP_GL_FUNCS
+    #undef _SAPP_XMACRO
+}
+
+#endif // _SAPP_WIN32 && SOKOL_GLCORE33 && !SOKOL_WIN32_NO_GL_LOADER
+
+/*=== PRIVATE HELPER FUNCTIONS ===============================================*/
 _SOKOL_PRIVATE void _sapp_fail(const char* msg) {
     if (_sapp.desc.fail_cb) {
         _sapp.desc.fail_cb(msg);
@@ -2091,7 +2459,7 @@ _SOKOL_PRIVATE void _sapp_macos_init_keytable(void) {
     _sapp.keycodes[0x4E] = SAPP_KEYCODE_KP_SUBTRACT;
 }
 
-_SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
+_SOKOL_PRIVATE void _sapp_macos_run(const sapp_desc* desc) {
     _sapp_init_state(desc);
     _sapp_macos_init_keytable();
     [NSApplication sharedApplication];
@@ -2107,7 +2475,7 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
 #if !defined(SOKOL_NO_ENTRY)
 int main(int argc, char* argv[]) {
     sapp_desc desc = sokol_main(argc, argv);
-    _sapp_run(&desc);
+    _sapp_macos_run(&desc);
     return 0;
 }
 #endif /* SOKOL_NO_ENTRY */
@@ -2603,7 +2971,7 @@ static _sapp_ios_glk_view_dlg* _sapp_ios_glk_view_dlg_obj;
 static GLKViewController* _sapp_ios_view_ctrl_obj;
 #endif
 
-_SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
+_SOKOL_PRIVATE void _sapp_ios_run(const sapp_desc* desc) {
     _sapp_init_state(desc);
     static int argc = 1;
     static char* argv[] = { (char*)"sokol_app" };
@@ -2615,7 +2983,7 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
 #if !defined(SOKOL_NO_ENTRY)
 int main(int argc, char* argv[]) {
     sapp_desc desc = sokol_main(argc, argv);
-    _sapp_run(&desc);
+    _sapp_ios_run(&desc);
     return 0;
 }
 #endif /* SOKOL_NO_ENTRY */
@@ -3749,12 +4117,13 @@ _SOKOL_PRIVATE EM_BOOL _sapp_emsc_frame(double time, void* userData) {
     if (_sapp.quit_ordered) {
         _sapp_emsc_unregister_eventhandlers();
         _sapp_call_cleanup();
+        _sapp_discard_state();
         return EM_FALSE;
     }
     return EM_TRUE;
 }
 
-_SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
+_SOKOL_PRIVATE void _sapp_emsc_run(const sapp_desc* desc) {
     _sapp_init_state(desc);
     _sapp_emsc_keytable_init();
     double w, h;
@@ -3785,13 +4154,15 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
     /* start the frame loop */
     emscripten_request_animation_frame_loop(_sapp_emsc_frame, 0);
 
-    /* NOT A BUG: do not call _sapp_discard_state() */
+    /* NOT A BUG: do not call _sapp_discard_state() here, instead this is
+       called in _sapp_emsc_frame() when the application is ordered to quit
+     */
 }
 
 #if !defined(SOKOL_NO_ENTRY)
 int main(int argc, char* argv[]) {
     sapp_desc desc = sokol_main(argc, argv);
-    _sapp_run(&desc);
+    _sapp_emsc_run(&desc);
     return 0;
 }
 #endif /* SOKOL_NO_ENTRY */
@@ -3910,643 +4281,11 @@ _SOKOL_PRIVATE const _sapp_gl_fbconfig* _sapp_gl_choose_fbconfig(const _sapp_gl_
 /*== WINDOWS ==================================================================*/
 #if defined(_SAPP_WIN32)
 
-/* NOTE: the optional GL loader only contains the GL constants and functions required for sokol_gfx.h, if you need
-more, you'll need to use you own gl header-generator/loader
-*/
-#if !defined(SOKOL_WIN32_NO_GL_LOADER)
-#if defined(SOKOL_GLCORE33)
-#define __gl_h_ 1
-#define __gl32_h_ 1
-#define __gl31_h_ 1
-#define __GL_H__ 1
-#define __glext_h_ 1
-#define __GLEXT_H_ 1
-#define __gltypes_h_ 1
-#define __glcorearb_h_ 1
-#define __gl_glcorearb_h_ 1
-#define GL_APIENTRY APIENTRY
-
-typedef unsigned int  GLenum;
-typedef unsigned int  GLuint;
-typedef int  GLsizei;
-typedef char  GLchar;
-typedef ptrdiff_t  GLintptr;
-typedef ptrdiff_t  GLsizeiptr;
-typedef double  GLclampd;
-typedef unsigned short  GLushort;
-typedef unsigned char  GLubyte;
-typedef unsigned char  GLboolean;
-typedef uint64_t  GLuint64;
-typedef double  GLdouble;
-typedef unsigned short  GLhalf;
-typedef float  GLclampf;
-typedef unsigned int  GLbitfield;
-typedef signed char  GLbyte;
-typedef short  GLshort;
-typedef void  GLvoid;
-typedef int64_t  GLint64;
-typedef float  GLfloat;
-typedef struct __GLsync * GLsync;
-typedef int  GLint;
-#define GL_INT_2_10_10_10_REV 0x8D9F
-#define GL_R32F 0x822E
-#define GL_PROGRAM_POINT_SIZE 0x8642
-#define GL_STENCIL_ATTACHMENT 0x8D20
-#define GL_DEPTH_ATTACHMENT 0x8D00
-#define GL_COLOR_ATTACHMENT2 0x8CE2
-#define GL_COLOR_ATTACHMENT0 0x8CE0
-#define GL_R16F 0x822D
-#define GL_COLOR_ATTACHMENT22 0x8CF6
-#define GL_DRAW_FRAMEBUFFER 0x8CA9
-#define GL_FRAMEBUFFER_COMPLETE 0x8CD5
-#define GL_NUM_EXTENSIONS 0x821D
-#define GL_INFO_LOG_LENGTH 0x8B84
-#define GL_VERTEX_SHADER 0x8B31
-#define GL_INCR 0x1E02
-#define GL_DYNAMIC_DRAW 0x88E8
-#define GL_STATIC_DRAW 0x88E4
-#define GL_TEXTURE_CUBE_MAP_POSITIVE_Z 0x8519
-#define GL_TEXTURE_CUBE_MAP 0x8513
-#define GL_FUNC_SUBTRACT 0x800A
-#define GL_FUNC_REVERSE_SUBTRACT 0x800B
-#define GL_CONSTANT_COLOR 0x8001
-#define GL_DECR_WRAP 0x8508
-#define GL_R8 0x8229
-#define GL_LINEAR_MIPMAP_LINEAR 0x2703
-#define GL_ELEMENT_ARRAY_BUFFER 0x8893
-#define GL_SHORT 0x1402
-#define GL_DEPTH_TEST 0x0B71
-#define GL_TEXTURE_CUBE_MAP_NEGATIVE_Y 0x8518
-#define GL_LINK_STATUS 0x8B82
-#define GL_TEXTURE_CUBE_MAP_POSITIVE_Y 0x8517
-#define GL_SAMPLE_ALPHA_TO_COVERAGE 0x809E
-#define GL_RGBA16F 0x881A
-#define GL_CONSTANT_ALPHA 0x8003
-#define GL_READ_FRAMEBUFFER 0x8CA8
-#define GL_TEXTURE0 0x84C0
-#define GL_TEXTURE_MIN_LOD 0x813A
-#define GL_CLAMP_TO_EDGE 0x812F
-#define GL_UNSIGNED_SHORT_5_6_5 0x8363
-#define GL_TEXTURE_WRAP_R 0x8072
-#define GL_UNSIGNED_SHORT_5_5_5_1 0x8034
-#define GL_NEAREST_MIPMAP_NEAREST 0x2700
-#define GL_UNSIGNED_SHORT_4_4_4_4 0x8033
-#define GL_SRC_ALPHA_SATURATE 0x0308
-#define GL_STREAM_DRAW 0x88E0
-#define GL_ONE 1
-#define GL_NEAREST_MIPMAP_LINEAR 0x2702
-#define GL_RGB10_A2 0x8059
-#define GL_RGBA8 0x8058
-#define GL_COLOR_ATTACHMENT1 0x8CE1
-#define GL_RGBA4 0x8056
-#define GL_RGB8 0x8051
-#define GL_ARRAY_BUFFER 0x8892
-#define GL_STENCIL 0x1802
-#define GL_TEXTURE_2D 0x0DE1
-#define GL_DEPTH 0x1801
-#define GL_FRONT 0x0404
-#define GL_STENCIL_BUFFER_BIT 0x00000400
-#define GL_REPEAT 0x2901
-#define GL_RGBA 0x1908
-#define GL_TEXTURE_CUBE_MAP_POSITIVE_X 0x8515
-#define GL_DECR 0x1E03
-#define GL_FRAGMENT_SHADER 0x8B30
-#define GL_FLOAT 0x1406
-#define GL_TEXTURE_MAX_LOD 0x813B
-#define GL_DEPTH_COMPONENT 0x1902
-#define GL_ONE_MINUS_DST_ALPHA 0x0305
-#define GL_COLOR 0x1800
-#define GL_TEXTURE_2D_ARRAY 0x8C1A
-#define GL_TRIANGLES 0x0004
-#define GL_UNSIGNED_BYTE 0x1401
-#define GL_TEXTURE_MAG_FILTER 0x2800
-#define GL_ONE_MINUS_CONSTANT_ALPHA 0x8004
-#define GL_NONE 0
-#define GL_SRC_COLOR 0x0300
-#define GL_BYTE 0x1400
-#define GL_TEXTURE_CUBE_MAP_NEGATIVE_Z 0x851A
-#define GL_LINE_STRIP 0x0003
-#define GL_TEXTURE_3D 0x806F
-#define GL_CW 0x0900
-#define GL_LINEAR 0x2601
-#define GL_RENDERBUFFER 0x8D41
-#define GL_GEQUAL 0x0206
-#define GL_COLOR_BUFFER_BIT 0x00004000
-#define GL_RGBA32F 0x8814
-#define GL_BLEND 0x0BE2
-#define GL_ONE_MINUS_SRC_ALPHA 0x0303
-#define GL_ONE_MINUS_CONSTANT_COLOR 0x8002
-#define GL_TEXTURE_WRAP_T 0x2803
-#define GL_TEXTURE_WRAP_S 0x2802
-#define GL_TEXTURE_MIN_FILTER 0x2801
-#define GL_LINEAR_MIPMAP_NEAREST 0x2701
-#define GL_EXTENSIONS 0x1F03
-#define GL_NO_ERROR 0
-#define GL_REPLACE 0x1E01
-#define GL_KEEP 0x1E00
-#define GL_CCW 0x0901
-#define GL_TEXTURE_CUBE_MAP_NEGATIVE_X 0x8516
-#define GL_RGB 0x1907
-#define GL_TRIANGLE_STRIP 0x0005
-#define GL_FALSE 0
-#define GL_ZERO 0
-#define GL_CULL_FACE 0x0B44
-#define GL_INVERT 0x150A
-#define GL_INT 0x1404
-#define GL_UNSIGNED_INT 0x1405
-#define GL_UNSIGNED_SHORT 0x1403
-#define GL_NEAREST 0x2600
-#define GL_SCISSOR_TEST 0x0C11
-#define GL_LEQUAL 0x0203
-#define GL_STENCIL_TEST 0x0B90
-#define GL_DITHER 0x0BD0
-#define GL_DEPTH_COMPONENT16 0x81A5
-#define GL_EQUAL 0x0202
-#define GL_FRAMEBUFFER 0x8D40
-#define GL_RGB5 0x8050
-#define GL_LINES 0x0001
-#define GL_DEPTH_BUFFER_BIT 0x00000100
-#define GL_SRC_ALPHA 0x0302
-#define GL_INCR_WRAP 0x8507
-#define GL_LESS 0x0201
-#define GL_MULTISAMPLE 0x809D
-#define GL_FRAMEBUFFER_BINDING 0x8CA6
-#define GL_BACK 0x0405
-#define GL_ALWAYS 0x0207
-#define GL_FUNC_ADD 0x8006
-#define GL_ONE_MINUS_DST_COLOR 0x0307
-#define GL_NOTEQUAL 0x0205
-#define GL_DST_COLOR 0x0306
-#define GL_COMPILE_STATUS 0x8B81
-#define GL_RED 0x1903
-#define GL_COLOR_ATTACHMENT3 0x8CE3
-#define GL_DST_ALPHA 0x0304
-#define GL_RGB5_A1 0x8057
-#define GL_GREATER 0x0204
-#define GL_POLYGON_OFFSET_FILL 0x8037
-#define GL_TRUE 1
-#define GL_NEVER 0x0200
-#define GL_POINTS 0x0000
-#define GL_ONE_MINUS_SRC_COLOR 0x0301
-#define GL_MIRRORED_REPEAT 0x8370
-#define GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS 0x8B4D
-#define GL_R11F_G11F_B10F 0x8C3A
-#define GL_UNSIGNED_INT_10F_11F_11F_REV 0x8C3B
-#define GL_RGBA32UI 0x8D70
-#define GL_RGB32UI 0x8D71
-#define GL_RGBA16UI 0x8D76
-#define GL_RGB16UI 0x8D77
-#define GL_RGBA8UI 0x8D7C
-#define GL_RGB8UI 0x8D7D
-#define GL_RGBA32I 0x8D82
-#define GL_RGB32I 0x8D83
-#define GL_RGBA16I 0x8D88
-#define GL_RGB16I 0x8D89
-#define GL_RGBA8I 0x8D8E
-#define GL_RGB8I 0x8D8F
-#define GL_RED_INTEGER 0x8D94
-#define GL_RG 0x8227
-#define GL_RG_INTEGER 0x8228
-#define GL_R8 0x8229
-#define GL_R16 0x822A
-#define GL_RG8 0x822B
-#define GL_RG16 0x822C
-#define GL_R16F 0x822D
-#define GL_R32F 0x822E
-#define GL_RG16F 0x822F
-#define GL_RG32F 0x8230
-#define GL_R8I 0x8231
-#define GL_R8UI 0x8232
-#define GL_R16I 0x8233
-#define GL_R16UI 0x8234
-#define GL_R32I 0x8235
-#define GL_R32UI 0x8236
-#define GL_RG8I 0x8237
-#define GL_RG8UI 0x8238
-#define GL_RG16I 0x8239
-#define GL_RG16UI 0x823A
-#define GL_RG32I 0x823B
-#define GL_RG32UI 0x823C
-#define GL_RGBA_INTEGER 0x8D99
-#define GL_R8_SNORM 0x8F94
-#define GL_RG8_SNORM 0x8F95
-#define GL_RGB8_SNORM 0x8F96
-#define GL_RGBA8_SNORM 0x8F97
-#define GL_R16_SNORM 0x8F98
-#define GL_RG16_SNORM 0x8F99
-#define GL_RGB16_SNORM 0x8F9A
-#define GL_RGBA16_SNORM 0x8F9B
-#define GL_RGBA16 0x805B
-#define GL_MAX_TEXTURE_SIZE 0x0D33
-#define GL_MAX_CUBE_MAP_TEXTURE_SIZE 0x851C
-#define GL_MAX_3D_TEXTURE_SIZE 0x8073
-#define GL_MAX_ARRAY_TEXTURE_LAYERS 0x88FF
-#define GL_MAX_VERTEX_ATTRIBS 0x8869
-#define GL_CLAMP_TO_BORDER 0x812D
-#define GL_TEXTURE_BORDER_COLOR 0x1004
-#define GL_CURRENT_PROGRAM 0x8B8D
-
-typedef void  (GL_APIENTRY *PFN_glBindVertexArray)(GLuint array);
-static PFN_glBindVertexArray _sapp_glBindVertexArray;
-typedef void  (GL_APIENTRY *PFN_glFramebufferTextureLayer)(GLenum target, GLenum attachment, GLuint texture, GLint level, GLint layer);
-static PFN_glFramebufferTextureLayer _sapp_glFramebufferTextureLayer;
-typedef void  (GL_APIENTRY *PFN_glGenFramebuffers)(GLsizei n, GLuint * framebuffers);
-static PFN_glGenFramebuffers _sapp_glGenFramebuffers;
-typedef void  (GL_APIENTRY *PFN_glBindFramebuffer)(GLenum target, GLuint framebuffer);
-static PFN_glBindFramebuffer _sapp_glBindFramebuffer;
-typedef void  (GL_APIENTRY *PFN_glBindRenderbuffer)(GLenum target, GLuint renderbuffer);
-static PFN_glBindRenderbuffer _sapp_glBindRenderbuffer;
-typedef const GLubyte * (GL_APIENTRY *PFN_glGetStringi)(GLenum name, GLuint index);
-static PFN_glGetStringi _sapp_glGetStringi;
-typedef void  (GL_APIENTRY *PFN_glClearBufferfi)(GLenum buffer, GLint drawbuffer, GLfloat depth, GLint stencil);
-static PFN_glClearBufferfi _sapp_glClearBufferfi;
-typedef void  (GL_APIENTRY *PFN_glClearBufferfv)(GLenum buffer, GLint drawbuffer, const GLfloat * value);
-static PFN_glClearBufferfv _sapp_glClearBufferfv;
-typedef void  (GL_APIENTRY *PFN_glClearBufferuiv)(GLenum buffer, GLint drawbuffer, const GLuint * value);
-static PFN_glClearBufferuiv _sapp_glClearBufferuiv;
-typedef void  (GL_APIENTRY *PFN_glDeleteRenderbuffers)(GLsizei n, const GLuint * renderbuffers);
-static PFN_glDeleteRenderbuffers _sapp_glDeleteRenderbuffers;
-typedef void  (GL_APIENTRY *PFN_glUniform4fv)(GLint location, GLsizei count, const GLfloat * value);
-static PFN_glUniform4fv _sapp_glUniform4fv;
-typedef void  (GL_APIENTRY *PFN_glUniform2fv)(GLint location, GLsizei count, const GLfloat * value);
-static PFN_glUniform2fv _sapp_glUniform2fv;
-typedef void  (GL_APIENTRY *PFN_glUseProgram)(GLuint program);
-static PFN_glUseProgram _sapp_glUseProgram;
-typedef void  (GL_APIENTRY *PFN_glShaderSource)(GLuint shader, GLsizei count, const GLchar *const* string, const GLint * length);
-static PFN_glShaderSource _sapp_glShaderSource;
-typedef void  (GL_APIENTRY *PFN_glLinkProgram)(GLuint program);
-static PFN_glLinkProgram _sapp_glLinkProgram;
-typedef GLint (GL_APIENTRY *PFN_glGetUniformLocation)(GLuint program, const GLchar * name);
-static PFN_glGetUniformLocation _sapp_glGetUniformLocation;
-typedef void  (GL_APIENTRY *PFN_glGetShaderiv)(GLuint shader, GLenum pname, GLint * params);
-static PFN_glGetShaderiv _sapp_glGetShaderiv;
-typedef void  (GL_APIENTRY *PFN_glGetProgramInfoLog)(GLuint program, GLsizei bufSize, GLsizei * length, GLchar * infoLog);
-static PFN_glGetProgramInfoLog _sapp_glGetProgramInfoLog;
-typedef GLint (GL_APIENTRY *PFN_glGetAttribLocation)(GLuint program, const GLchar * name);
-static PFN_glGetAttribLocation _sapp_glGetAttribLocation;
-typedef void  (GL_APIENTRY *PFN_glDisableVertexAttribArray)(GLuint index);
-static PFN_glDisableVertexAttribArray _sapp_glDisableVertexAttribArray;
-typedef void  (GL_APIENTRY *PFN_glDeleteShader)(GLuint shader);
-static PFN_glDeleteShader _sapp_glDeleteShader;
-typedef void  (GL_APIENTRY *PFN_glDeleteProgram)(GLuint program);
-static PFN_glDeleteProgram _sapp_glDeleteProgram;
-typedef void  (GL_APIENTRY *PFN_glCompileShader)(GLuint shader);
-static PFN_glCompileShader _sapp_glCompileShader;
-typedef void  (GL_APIENTRY *PFN_glStencilFuncSeparate)(GLenum face, GLenum func, GLint ref, GLuint mask);
-static PFN_glStencilFuncSeparate _sapp_glStencilFuncSeparate;
-typedef void  (GL_APIENTRY *PFN_glStencilOpSeparate)(GLenum face, GLenum sfail, GLenum dpfail, GLenum dppass);
-static PFN_glStencilOpSeparate _sapp_glStencilOpSeparate;
-typedef void  (GL_APIENTRY *PFN_glRenderbufferStorageMultisample)(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height);
-static PFN_glRenderbufferStorageMultisample _sapp_glRenderbufferStorageMultisample;
-typedef void  (GL_APIENTRY *PFN_glDrawBuffers)(GLsizei n, const GLenum * bufs);
-static PFN_glDrawBuffers _sapp_glDrawBuffers;
-typedef void  (GL_APIENTRY *PFN_glVertexAttribDivisor)(GLuint index, GLuint divisor);
-static PFN_glVertexAttribDivisor _sapp_glVertexAttribDivisor;
-typedef void  (GL_APIENTRY *PFN_glBufferSubData)(GLenum target, GLintptr offset, GLsizeiptr size, const void * data);
-static PFN_glBufferSubData _sapp_glBufferSubData;
-typedef void  (GL_APIENTRY *PFN_glGenBuffers)(GLsizei n, GLuint * buffers);
-static PFN_glGenBuffers _sapp_glGenBuffers;
-typedef GLenum (GL_APIENTRY *PFN_glCheckFramebufferStatus)(GLenum target);
-static PFN_glCheckFramebufferStatus _sapp_glCheckFramebufferStatus;
-typedef void  (GL_APIENTRY *PFN_glFramebufferRenderbuffer)(GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
-static PFN_glFramebufferRenderbuffer _sapp_glFramebufferRenderbuffer;
-typedef void  (GL_APIENTRY *PFN_glCompressedTexImage2D)(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const void * data);
-static PFN_glCompressedTexImage2D _sapp_glCompressedTexImage2D;
-typedef void  (GL_APIENTRY *PFN_glCompressedTexImage3D)(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLsizei imageSize, const void * data);
-static PFN_glCompressedTexImage3D _sapp_glCompressedTexImage3D;
-typedef void  (GL_APIENTRY *PFN_glActiveTexture)(GLenum texture);
-static PFN_glActiveTexture _sapp_glActiveTexture;
-typedef void  (GL_APIENTRY *PFN_glTexSubImage3D)(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const void * pixels);
-static PFN_glTexSubImage3D _sapp_glTexSubImage3D;
-typedef void  (GL_APIENTRY *PFN_glUniformMatrix4fv)(GLint location, GLsizei count, GLboolean transpose, const GLfloat * value);
-static PFN_glUniformMatrix4fv _sapp_glUniformMatrix4fv;
-typedef void  (GL_APIENTRY *PFN_glRenderbufferStorage)(GLenum target, GLenum internalformat, GLsizei width, GLsizei height);
-static PFN_glRenderbufferStorage _sapp_glRenderbufferStorage;
-typedef void  (GL_APIENTRY *PFN_glGenTextures)(GLsizei n, GLuint * textures);
-static PFN_glGenTextures _sapp_glGenTextures;
-typedef void  (GL_APIENTRY *PFN_glPolygonOffset)(GLfloat factor, GLfloat units);
-static PFN_glPolygonOffset _sapp_glPolygonOffset;
-typedef void  (GL_APIENTRY *PFN_glDrawElements)(GLenum mode, GLsizei count, GLenum type, const void * indices);
-static PFN_glDrawElements _sapp_glDrawElements;
-typedef void  (GL_APIENTRY *PFN_glDeleteFramebuffers)(GLsizei n, const GLuint * framebuffers);
-static PFN_glDeleteFramebuffers _sapp_glDeleteFramebuffers;
-typedef void  (GL_APIENTRY *PFN_glBlendEquationSeparate)(GLenum modeRGB, GLenum modeAlpha);
-static PFN_glBlendEquationSeparate _sapp_glBlendEquationSeparate;
-typedef void  (GL_APIENTRY *PFN_glDeleteTextures)(GLsizei n, const GLuint * textures);
-static PFN_glDeleteTextures _sapp_glDeleteTextures;
-typedef void  (GL_APIENTRY *PFN_glGetProgramiv)(GLuint program, GLenum pname, GLint * params);
-static PFN_glGetProgramiv _sapp_glGetProgramiv;
-typedef void  (GL_APIENTRY *PFN_glBindTexture)(GLenum target, GLuint texture);
-static PFN_glBindTexture _sapp_glBindTexture;
-typedef void  (GL_APIENTRY *PFN_glTexImage3D)(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const void * pixels);
-static PFN_glTexImage3D _sapp_glTexImage3D;
-typedef GLuint (GL_APIENTRY *PFN_glCreateShader)(GLenum type);
-static PFN_glCreateShader _sapp_glCreateShader;
-typedef void  (GL_APIENTRY *PFN_glTexSubImage2D)(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void * pixels);
-static PFN_glTexSubImage2D _sapp_glTexSubImage2D;
-typedef void  (GL_APIENTRY *PFN_glClearDepth)(GLdouble depth);
-static PFN_glClearDepth _sapp_glClearDepth;
-typedef void  (GL_APIENTRY *PFN_glFramebufferTexture2D)(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
-static PFN_glFramebufferTexture2D _sapp_glFramebufferTexture2D;
-typedef GLuint (GL_APIENTRY *PFN_glCreateProgram)();
-static PFN_glCreateProgram _sapp_glCreateProgram;
-typedef void  (GL_APIENTRY *PFN_glViewport)(GLint x, GLint y, GLsizei width, GLsizei height);
-static PFN_glViewport _sapp_glViewport;
-typedef void  (GL_APIENTRY *PFN_glDeleteBuffers)(GLsizei n, const GLuint * buffers);
-static PFN_glDeleteBuffers _sapp_glDeleteBuffers;
-typedef void  (GL_APIENTRY *PFN_glDrawArrays)(GLenum mode, GLint first, GLsizei count);
-static PFN_glDrawArrays _sapp_glDrawArrays;
-typedef void  (GL_APIENTRY *PFN_glDrawElementsInstanced)(GLenum mode, GLsizei count, GLenum type, const void * indices, GLsizei instancecount);
-static PFN_glDrawElementsInstanced _sapp_glDrawElementsInstanced;
-typedef void  (GL_APIENTRY *PFN_glVertexAttribPointer)(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void * pointer);
-static PFN_glVertexAttribPointer _sapp_glVertexAttribPointer;
-typedef void  (GL_APIENTRY *PFN_glUniform1i)(GLint location, GLint v0);
-static PFN_glUniform1i _sapp_glUniform1i;
-typedef void  (GL_APIENTRY *PFN_glDisable)(GLenum cap);
-static PFN_glDisable _sapp_glDisable;
-typedef void  (GL_APIENTRY *PFN_glColorMask)(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha);
-static PFN_glColorMask _sapp_glColorMask;
-typedef void  (GL_APIENTRY *PFN_glBindBuffer)(GLenum target, GLuint buffer);
-static PFN_glBindBuffer _sapp_glBindBuffer;
-typedef void  (GL_APIENTRY *PFN_glDeleteVertexArrays)(GLsizei n, const GLuint * arrays);
-static PFN_glDeleteVertexArrays _sapp_glDeleteVertexArrays;
-typedef void  (GL_APIENTRY *PFN_glDepthMask)(GLboolean flag);
-static PFN_glDepthMask _sapp_glDepthMask;
-typedef void  (GL_APIENTRY *PFN_glDrawArraysInstanced)(GLenum mode, GLint first, GLsizei count, GLsizei instancecount);
-static PFN_glDrawArraysInstanced _sapp_glDrawArraysInstanced;
-typedef void  (GL_APIENTRY *PFN_glClearStencil)(GLint s);
-static PFN_glClearStencil _sapp_glClearStencil;
-typedef void  (GL_APIENTRY *PFN_glScissor)(GLint x, GLint y, GLsizei width, GLsizei height);
-static PFN_glScissor _sapp_glScissor;
-typedef void  (GL_APIENTRY *PFN_glUniform3fv)(GLint location, GLsizei count, const GLfloat * value);
-static PFN_glUniform3fv _sapp_glUniform3fv;
-typedef void  (GL_APIENTRY *PFN_glGenRenderbuffers)(GLsizei n, GLuint * renderbuffers);
-static PFN_glGenRenderbuffers _sapp_glGenRenderbuffers;
-typedef void  (GL_APIENTRY *PFN_glBufferData)(GLenum target, GLsizeiptr size, const void * data, GLenum usage);
-static PFN_glBufferData _sapp_glBufferData;
-typedef void  (GL_APIENTRY *PFN_glBlendFuncSeparate)(GLenum sfactorRGB, GLenum dfactorRGB, GLenum sfactorAlpha, GLenum dfactorAlpha);
-static PFN_glBlendFuncSeparate _sapp_glBlendFuncSeparate;
-typedef void  (GL_APIENTRY *PFN_glTexParameteri)(GLenum target, GLenum pname, GLint param);
-static PFN_glTexParameteri _sapp_glTexParameteri;
-typedef void  (GL_APIENTRY *PFN_glGetIntegerv)(GLenum pname, GLint * data);
-static PFN_glGetIntegerv _sapp_glGetIntegerv;
-typedef void  (GL_APIENTRY *PFN_glEnable)(GLenum cap);
-static PFN_glEnable _sapp_glEnable;
-typedef void  (GL_APIENTRY *PFN_glBlitFramebuffer)(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter);
-static PFN_glBlitFramebuffer _sapp_glBlitFramebuffer;
-typedef void  (GL_APIENTRY *PFN_glStencilMask)(GLuint mask);
-static PFN_glStencilMask _sapp_glStencilMask;
-typedef void  (GL_APIENTRY *PFN_glAttachShader)(GLuint program, GLuint shader);
-static PFN_glAttachShader _sapp_glAttachShader;
-typedef GLenum (GL_APIENTRY *PFN_glGetError)();
-static PFN_glGetError _sapp_glGetError;
-typedef void  (GL_APIENTRY *PFN_glClearColor)(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
-static PFN_glClearColor _sapp_glClearColor;
-typedef void  (GL_APIENTRY *PFN_glBlendColor)(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
-static PFN_glBlendColor _sapp_glBlendColor;
-typedef void  (GL_APIENTRY *PFN_glTexParameterf)(GLenum target, GLenum pname, GLfloat param);
-static PFN_glTexParameterf _sapp_glTexParameterf;
-typedef void  (GL_APIENTRY *PFN_glTexParameterfv)(GLenum target, GLenum pname, GLfloat* params);
-static PFN_glTexParameterfv _sapp_glTexParameterfv;
-typedef void  (GL_APIENTRY *PFN_glGetShaderInfoLog)(GLuint shader, GLsizei bufSize, GLsizei * length, GLchar * infoLog);
-static PFN_glGetShaderInfoLog _sapp_glGetShaderInfoLog;
-typedef void  (GL_APIENTRY *PFN_glDepthFunc)(GLenum func);
-static PFN_glDepthFunc _sapp_glDepthFunc;
-typedef void  (GL_APIENTRY *PFN_glStencilOp)(GLenum fail, GLenum zfail, GLenum zpass);
-static PFN_glStencilOp _sapp_glStencilOp;
-typedef void  (GL_APIENTRY *PFN_glStencilFunc)(GLenum func, GLint ref, GLuint mask);
-static PFN_glStencilFunc _sapp_glStencilFunc;
-typedef void  (GL_APIENTRY *PFN_glEnableVertexAttribArray)(GLuint index);
-static PFN_glEnableVertexAttribArray _sapp_glEnableVertexAttribArray;
-typedef void  (GL_APIENTRY *PFN_glBlendFunc)(GLenum sfactor, GLenum dfactor);
-static PFN_glBlendFunc _sapp_glBlendFunc;
-typedef void  (GL_APIENTRY *PFN_glUniform1fv)(GLint location, GLsizei count, const GLfloat * value);
-static PFN_glUniform1fv _sapp_glUniform1fv;
-typedef void  (GL_APIENTRY *PFN_glReadBuffer)(GLenum src);
-static PFN_glReadBuffer _sapp_glReadBuffer;
-typedef void  (GL_APIENTRY *PFN_glClear)(GLbitfield mask);
-static PFN_glClear _sapp_glClear;
-typedef void  (GL_APIENTRY *PFN_glTexImage2D)(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void * pixels);
-static PFN_glTexImage2D _sapp_glTexImage2D;
-typedef void  (GL_APIENTRY *PFN_glGenVertexArrays)(GLsizei n, GLuint * arrays);
-static PFN_glGenVertexArrays _sapp_glGenVertexArrays;
-typedef void  (GL_APIENTRY *PFN_glFrontFace)(GLenum mode);
-static PFN_glFrontFace _sapp_glFrontFace;
-typedef void  (GL_APIENTRY *PFN_glCullFace)(GLenum mode);
-static PFN_glCullFace _sapp_glCullFace;
-
-_SOKOL_PRIVATE void* _sapp_win32_glgetprocaddr(const char* name) {
-    void* proc_addr = (void*) _sapp.wgl.GetProcAddress(name);
-    if (0 == proc_addr) {
-        proc_addr = (void*) GetProcAddress(_sapp.wgl.opengl32, name);
-    }
-    SOKOL_ASSERT(proc_addr);
-    return proc_addr;
-}
-
-#define _SAPP_GLPROC(name) _sapp_ ## name = (PFN_ ## name) _sapp_win32_glgetprocaddr(#name)
-
-_SOKOL_PRIVATE  void _sapp_win32_gl_loadfuncs(void) {
-    SOKOL_ASSERT(_sapp.wgl.GetProcAddress);
-    SOKOL_ASSERT(_sapp.wgl.opengl32);
-    _SAPP_GLPROC(glBindVertexArray);
-    _SAPP_GLPROC(glFramebufferTextureLayer);
-    _SAPP_GLPROC(glGenFramebuffers);
-    _SAPP_GLPROC(glBindFramebuffer);
-    _SAPP_GLPROC(glBindRenderbuffer);
-    _SAPP_GLPROC(glGetStringi);
-    _SAPP_GLPROC(glClearBufferfi);
-    _SAPP_GLPROC(glClearBufferfv);
-    _SAPP_GLPROC(glClearBufferuiv);
-    _SAPP_GLPROC(glDeleteRenderbuffers);
-    _SAPP_GLPROC(glUniform4fv);
-    _SAPP_GLPROC(glUniform2fv);
-    _SAPP_GLPROC(glUseProgram);
-    _SAPP_GLPROC(glShaderSource);
-    _SAPP_GLPROC(glLinkProgram);
-    _SAPP_GLPROC(glGetUniformLocation);
-    _SAPP_GLPROC(glGetShaderiv);
-    _SAPP_GLPROC(glGetProgramInfoLog);
-    _SAPP_GLPROC(glGetAttribLocation);
-    _SAPP_GLPROC(glDisableVertexAttribArray);
-    _SAPP_GLPROC(glDeleteShader);
-    _SAPP_GLPROC(glDeleteProgram);
-    _SAPP_GLPROC(glCompileShader);
-    _SAPP_GLPROC(glStencilFuncSeparate);
-    _SAPP_GLPROC(glStencilOpSeparate);
-    _SAPP_GLPROC(glRenderbufferStorageMultisample);
-    _SAPP_GLPROC(glDrawBuffers);
-    _SAPP_GLPROC(glVertexAttribDivisor);
-    _SAPP_GLPROC(glBufferSubData);
-    _SAPP_GLPROC(glGenBuffers);
-    _SAPP_GLPROC(glCheckFramebufferStatus);
-    _SAPP_GLPROC(glFramebufferRenderbuffer);
-    _SAPP_GLPROC(glCompressedTexImage2D);
-    _SAPP_GLPROC(glCompressedTexImage3D);
-    _SAPP_GLPROC(glActiveTexture);
-    _SAPP_GLPROC(glTexSubImage3D);
-    _SAPP_GLPROC(glUniformMatrix4fv);
-    _SAPP_GLPROC(glRenderbufferStorage);
-    _SAPP_GLPROC(glGenTextures);
-    _SAPP_GLPROC(glPolygonOffset);
-    _SAPP_GLPROC(glDrawElements);
-    _SAPP_GLPROC(glDeleteFramebuffers);
-    _SAPP_GLPROC(glBlendEquationSeparate);
-    _SAPP_GLPROC(glDeleteTextures);
-    _SAPP_GLPROC(glGetProgramiv);
-    _SAPP_GLPROC(glBindTexture);
-    _SAPP_GLPROC(glTexImage3D);
-    _SAPP_GLPROC(glCreateShader);
-    _SAPP_GLPROC(glTexSubImage2D);
-    _SAPP_GLPROC(glClearDepth);
-    _SAPP_GLPROC(glFramebufferTexture2D);
-    _SAPP_GLPROC(glCreateProgram);
-    _SAPP_GLPROC(glViewport);
-    _SAPP_GLPROC(glDeleteBuffers);
-    _SAPP_GLPROC(glDrawArrays);
-    _SAPP_GLPROC(glDrawElementsInstanced);
-    _SAPP_GLPROC(glVertexAttribPointer);
-    _SAPP_GLPROC(glUniform1i);
-    _SAPP_GLPROC(glDisable);
-    _SAPP_GLPROC(glColorMask);
-    _SAPP_GLPROC(glBindBuffer);
-    _SAPP_GLPROC(glDeleteVertexArrays);
-    _SAPP_GLPROC(glDepthMask);
-    _SAPP_GLPROC(glDrawArraysInstanced);
-    _SAPP_GLPROC(glClearStencil);
-    _SAPP_GLPROC(glScissor);
-    _SAPP_GLPROC(glUniform3fv);
-    _SAPP_GLPROC(glGenRenderbuffers);
-    _SAPP_GLPROC(glBufferData);
-    _SAPP_GLPROC(glBlendFuncSeparate);
-    _SAPP_GLPROC(glTexParameteri);
-    _SAPP_GLPROC(glGetIntegerv);
-    _SAPP_GLPROC(glEnable);
-    _SAPP_GLPROC(glBlitFramebuffer);
-    _SAPP_GLPROC(glStencilMask);
-    _SAPP_GLPROC(glAttachShader);
-    _SAPP_GLPROC(glGetError);
-    _SAPP_GLPROC(glClearColor);
-    _SAPP_GLPROC(glBlendColor);
-    _SAPP_GLPROC(glTexParameterf);
-    _SAPP_GLPROC(glTexParameterfv);
-    _SAPP_GLPROC(glGetShaderInfoLog);
-    _SAPP_GLPROC(glDepthFunc);
-    _SAPP_GLPROC(glStencilOp);
-    _SAPP_GLPROC(glStencilFunc);
-    _SAPP_GLPROC(glEnableVertexAttribArray);
-    _SAPP_GLPROC(glBlendFunc);
-    _SAPP_GLPROC(glUniform1fv);
-    _SAPP_GLPROC(glReadBuffer);
-    _SAPP_GLPROC(glClear);
-    _SAPP_GLPROC(glTexImage2D);
-    _SAPP_GLPROC(glGenVertexArrays);
-    _SAPP_GLPROC(glFrontFace);
-    _SAPP_GLPROC(glCullFace);
-}
-#define glBindVertexArray _sapp_glBindVertexArray
-#define glFramebufferTextureLayer _sapp_glFramebufferTextureLayer
-#define glGenFramebuffers _sapp_glGenFramebuffers
-#define glBindFramebuffer _sapp_glBindFramebuffer
-#define glBindRenderbuffer _sapp_glBindRenderbuffer
-#define glGetStringi _sapp_glGetStringi
-#define glClearBufferfi _sapp_glClearBufferfi
-#define glClearBufferfv _sapp_glClearBufferfv
-#define glClearBufferuiv _sapp_glClearBufferuiv
-#define glDeleteRenderbuffers _sapp_glDeleteRenderbuffers
-#define glUniform4fv _sapp_glUniform4fv
-#define glUniform2fv _sapp_glUniform2fv
-#define glUseProgram _sapp_glUseProgram
-#define glShaderSource _sapp_glShaderSource
-#define glLinkProgram _sapp_glLinkProgram
-#define glGetUniformLocation _sapp_glGetUniformLocation
-#define glGetShaderiv _sapp_glGetShaderiv
-#define glGetProgramInfoLog _sapp_glGetProgramInfoLog
-#define glGetAttribLocation _sapp_glGetAttribLocation
-#define glDisableVertexAttribArray _sapp_glDisableVertexAttribArray
-#define glDeleteShader _sapp_glDeleteShader
-#define glDeleteProgram _sapp_glDeleteProgram
-#define glCompileShader _sapp_glCompileShader
-#define glStencilFuncSeparate _sapp_glStencilFuncSeparate
-#define glStencilOpSeparate _sapp_glStencilOpSeparate
-#define glRenderbufferStorageMultisample _sapp_glRenderbufferStorageMultisample
-#define glDrawBuffers _sapp_glDrawBuffers
-#define glVertexAttribDivisor _sapp_glVertexAttribDivisor
-#define glBufferSubData _sapp_glBufferSubData
-#define glGenBuffers _sapp_glGenBuffers
-#define glCheckFramebufferStatus _sapp_glCheckFramebufferStatus
-#define glFramebufferRenderbuffer _sapp_glFramebufferRenderbuffer
-#define glCompressedTexImage2D _sapp_glCompressedTexImage2D
-#define glCompressedTexImage3D _sapp_glCompressedTexImage3D
-#define glActiveTexture _sapp_glActiveTexture
-#define glTexSubImage3D _sapp_glTexSubImage3D
-#define glUniformMatrix4fv _sapp_glUniformMatrix4fv
-#define glRenderbufferStorage _sapp_glRenderbufferStorage
-#define glGenTextures _sapp_glGenTextures
-#define glPolygonOffset _sapp_glPolygonOffset
-#define glDrawElements _sapp_glDrawElements
-#define glDeleteFramebuffers _sapp_glDeleteFramebuffers
-#define glBlendEquationSeparate _sapp_glBlendEquationSeparate
-#define glDeleteTextures _sapp_glDeleteTextures
-#define glGetProgramiv _sapp_glGetProgramiv
-#define glBindTexture _sapp_glBindTexture
-#define glTexImage3D _sapp_glTexImage3D
-#define glCreateShader _sapp_glCreateShader
-#define glTexSubImage2D _sapp_glTexSubImage2D
-#define glClearDepth _sapp_glClearDepth
-#define glFramebufferTexture2D _sapp_glFramebufferTexture2D
-#define glCreateProgram _sapp_glCreateProgram
-#define glViewport _sapp_glViewport
-#define glDeleteBuffers _sapp_glDeleteBuffers
-#define glDrawArrays _sapp_glDrawArrays
-#define glDrawElementsInstanced _sapp_glDrawElementsInstanced
-#define glVertexAttribPointer _sapp_glVertexAttribPointer
-#define glUniform1i _sapp_glUniform1i
-#define glDisable _sapp_glDisable
-#define glColorMask _sapp_glColorMask
-#define glBindBuffer _sapp_glBindBuffer
-#define glDeleteVertexArrays _sapp_glDeleteVertexArrays
-#define glDepthMask _sapp_glDepthMask
-#define glDrawArraysInstanced _sapp_glDrawArraysInstanced
-#define glClearStencil _sapp_glClearStencil
-#define glScissor _sapp_glScissor
-#define glUniform3fv _sapp_glUniform3fv
-#define glGenRenderbuffers _sapp_glGenRenderbuffers
-#define glBufferData _sapp_glBufferData
-#define glBlendFuncSeparate _sapp_glBlendFuncSeparate
-#define glTexParameteri _sapp_glTexParameteri
-#define glGetIntegerv _sapp_glGetIntegerv
-#define glEnable _sapp_glEnable
-#define glBlitFramebuffer _sapp_glBlitFramebuffer
-#define glStencilMask _sapp_glStencilMask
-#define glAttachShader _sapp_glAttachShader
-#define glGetError _sapp_glGetError
-#define glClearColor _sapp_glClearColor
-#define glBlendColor _sapp_glBlendColor
-#define glTexParameterf _sapp_glTexParameterf
-#define glTexParameterfv _sapp_glTexParameterfv
-#define glGetShaderInfoLog _sapp_glGetShaderInfoLog
-#define glDepthFunc _sapp_glDepthFunc
-#define glStencilOp _sapp_glStencilOp
-#define glStencilFunc _sapp_glStencilFunc
-#define glEnableVertexAttribArray _sapp_glEnableVertexAttribArray
-#define glBlendFunc _sapp_glBlendFunc
-#define glUniform1fv _sapp_glUniform1fv
-#define glReadBuffer _sapp_glReadBuffer
-#define glClear _sapp_glClear
-#define glTexImage2D _sapp_glTexImage2D
-#define glGenVertexArrays _sapp_glGenVertexArrays
-#define glFrontFace _sapp_glFrontFace
-#define glCullFace _sapp_glCullFace
-
-#endif /* SOKOL_WIN32_NO_GL_LOADER */
-
-#endif /* SOKOL_GLCORE33 */
-
 #if defined(SOKOL_D3D11)
 
 
 #define _SAPP_SAFE_RELEASE(class, obj) if (obj) { class##_Release(obj); obj=0; }
+
 _SOKOL_PRIVATE void _sapp_d3d11_create_device(void) {
     int create_flags = D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 #if defined(SOKOL_DEBUG)
@@ -5467,7 +5206,7 @@ _SOKOL_PRIVATE void _sapp_win32_unregister_class(void) {
 }
 
 _SOKOL_PRIVATE void _sapp_win32_init_dpi(void) {
-    
+
     typedef BOOL(WINAPI * SETPROCESSDPIAWARE_T)(void);
     typedef HRESULT(WINAPI * SETPROCESSDPIAWARENESS_T)(PROCESS_DPI_AWARENESS);
     typedef HRESULT(WINAPI * GETDPIFORMONITOR_T)(HMONITOR, MONITOR_DPI_TYPE, UINT*, UINT*);
@@ -5592,7 +5331,7 @@ _SOKOL_PRIVATE const char* _sapp_win32_get_clipboard_string(void) {
     return _sapp.clipboard;
 }
 
-_SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
+_SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
     _sapp_init_state(desc);
     _sapp_win32_init_keytable();
     _sapp_win32_utf8_to_wide(_sapp.window_title, _sapp.window_title_wide, sizeof(_sapp.window_title_wide));
@@ -5747,7 +5486,7 @@ _SOKOL_PRIVATE char** _sapp_win32_command_line_to_utf8_argv(LPWSTR w_command_lin
 #if defined(SOKOL_WIN32_FORCE_MAIN)
 int main(int argc, char* argv[]) {
     sapp_desc desc = sokol_main(argc, argv);
-    _sapp_run(&desc);
+    _sapp_win32_run(&desc);
     return 0;
 }
 #else
@@ -5759,7 +5498,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     int argc_utf8 = 0;
     char** argv_utf8 = _sapp_win32_command_line_to_utf8_argv(GetCommandLineW(), &argc_utf8);
     sapp_desc desc = sokol_main(argc_utf8, argv_utf8);
-    _sapp_run(&desc);
+    _sapp_win32_run(&desc);
     SOKOL_FREE(argv_utf8);
     return 0;
 }
@@ -8119,7 +7858,7 @@ _SOKOL_PRIVATE void _sapp_x11_process_event(XEvent* event) {
     }
 }
 
-_SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
+_SOKOL_PRIVATE void _sapp_linux_run(const sapp_desc* desc) {
     _sapp_init_state(desc);
     _sapp.x11.window_state = NormalState;
 
@@ -8180,7 +7919,7 @@ _SOKOL_PRIVATE void _sapp_run(const sapp_desc* desc) {
 #if !defined(SOKOL_NO_ENTRY)
 int main(int argc, char* argv[]) {
     sapp_desc desc = sokol_main(argc, argv);
-    _sapp_run(&desc);
+    _sapp_linux_run(&desc);
     return 0;
 }
 #endif /* SOKOL_NO_ENTRY */
@@ -8190,7 +7929,20 @@ int main(int argc, char* argv[]) {
 #if defined(SOKOL_NO_ENTRY)
 SOKOL_API_IMPL int sapp_run(const sapp_desc* desc) {
     SOKOL_ASSERT(desc);
-    _sapp_run(desc);
+    #if defined(_SAPP_MACOS)
+        _sapp_macos_run(desc);
+    #elif defined(_SAPP_IOS)
+        _sapp_ios_run(desc);
+    #elif defined(_SAPP_EMSCRIPTEN)
+        _sapp_emsc_run(desc);
+    #elif defined(_SAPP_WIN32)
+        _sapp_win32_run(desc);
+    #elif defined(_SAPP_LINUX)
+        _sapp_linux_run(desc);
+    #else
+        // calling sapp_run() directly is not supported on Android)
+        _sapp_fail("sapp_run() not supported on this platform!");
+    #endif
     return 0;
 }
 
