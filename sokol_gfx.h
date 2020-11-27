@@ -8016,7 +8016,7 @@ _SOKOL_PRIVATE bool _sg_d3d11_load_d3dcompiler_dll(void) {
 #define _sg_d3d11_D3DCompile _sg.d3d11.D3DCompile_func
 #endif
 
-_SOKOL_PRIVATE ID3DBlob* _sg_d3d11_compile_shader(const sg_shader_stage_desc* stage_desc) {
+_SOKOL_PRIVATE ID3DBlob* _sg_d3d11_compile_shader(const sg_shader_stage_desc* stage_desc, const char* sh_label) {
     if (!_sg_d3d11_load_d3dcompiler_dll()) {
         return NULL;
     }
@@ -8026,12 +8026,16 @@ _SOKOL_PRIVATE ID3DBlob* _sg_d3d11_compile_shader(const sg_shader_stage_desc* st
     HRESULT hr = _sg_d3d11_D3DCompile(
         stage_desc->source,             /* pSrcData */
         strlen(stage_desc->source),     /* SrcDataSize */
-        NULL,                           /* pSourceName */
+        sh_label,                       /* pSourceName */
         NULL,                           /* pDefines */
         NULL,                           /* pInclude */
         stage_desc->entry ? stage_desc->entry : "main",     /* pEntryPoint */
         stage_desc->d3d11_target,       /* pTarget (vs_5_0 or ps_5_0) */
+    #ifdef SOKOL_DEBUG
         D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_OPTIMIZATION_LEVEL3,   /* Flags1 */
+    #else
+        D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,   /* Flags1 */
+    #endif
         0,          /* Flags2 */
         &output,    /* ppCode */
         &errors_or_warnings);   /* ppErrorMsgs */
@@ -8096,8 +8100,8 @@ _SOKOL_PRIVATE sg_resource_state _sg_d3d11_create_shader(_sg_shader_t* shd, cons
     }
     else {
         /* compile from shader source code */
-        vs_blob = _sg_d3d11_compile_shader(&desc->vs);
-        fs_blob = _sg_d3d11_compile_shader(&desc->fs);
+        vs_blob = _sg_d3d11_compile_shader(&desc->vs, desc->label);
+        fs_blob = _sg_d3d11_compile_shader(&desc->fs, desc->label);
         if (vs_blob && fs_blob) {
             vs_ptr = _sg_d3d11_GetBufferPointer(vs_blob);
             vs_length = _sg_d3d11_GetBufferSize(vs_blob);
