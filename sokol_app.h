@@ -1525,7 +1525,7 @@ inline int sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
     #include <windows.h>
     #include <windowsx.h>
     #include <shellapi.h>
-    #if !defined(SOKOL_WIN32_FORCE_MAIN)
+    #if !defined(SOKOL_WIN32_FORCE_MAIN) && !defined(SOKOL_NO_ENTRY)
         #pragma comment (linker, "/subsystem:windows")
     #endif
 
