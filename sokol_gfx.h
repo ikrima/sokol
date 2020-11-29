@@ -2359,6 +2359,11 @@ inline void sg_init_pass(sg_pass pass_id, const sg_pass_desc& desc) { return sg_
         #define SOKOL_DEBUG (1)
     #endif
 #endif
+#ifndef SOKOL_SHADER_DEBUG
+    #ifdef SOKOL_DEBUG
+        #define SOKOL_SHADER_DEBUG (1)
+    #endif
+#endif
 #ifndef SOKOL_ASSERT
     #include <assert.h>
     #define SOKOL_ASSERT(c) assert(c)
@@ -8031,10 +8036,10 @@ _SOKOL_PRIVATE ID3DBlob* _sg_d3d11_compile_shader(const sg_shader_stage_desc* st
         NULL,                           /* pInclude */
         stage_desc->entry ? stage_desc->entry : "main",     /* pEntryPoint */
         stage_desc->d3d11_target,       /* pTarget (vs_5_0 or ps_5_0) */
-    #ifdef SOKOL_DEBUG
-        D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_OPTIMIZATION_LEVEL3,   /* Flags1 */
-    #else
+    #ifdef SOKOL_SHADER_DEBUG
         D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,   /* Flags1 */
+    #else
+        D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_OPTIMIZATION_LEVEL3,   /* Flags1 */
     #endif
         0,          /* Flags2 */
         &output,    /* ppCode */
