@@ -1242,6 +1242,8 @@ SOKOL_APP_API_DECL int sapp_color_format(void);
 SOKOL_APP_API_DECL int sapp_depth_format(void);
 /* get default framebuffer sample count */
 SOKOL_APP_API_DECL int sapp_sample_count(void);
+/* get default swap interval */
+SOKOL_APP_API_DECL int sapp_swap_interval(void);
 /* returns true when high_dpi was requested and actually running in a high-dpi scenario */
 SOKOL_APP_API_DECL bool sapp_high_dpi(void);
 /* returns the dpi scaling factor (window pixels to framebuffer pixels) */
@@ -10633,6 +10635,10 @@ SOKOL_API_IMPL int sapp_depth_format(void) {
 
 SOKOL_API_IMPL int sapp_sample_count(void) {
     return _sapp.sample_count;
+}
+
+SOKOL_API_IMPL int sapp_swap_interval(void) {
+    return _sapp.swap_interval;
 }
 
 SOKOL_API_IMPL int sapp_height(void) {
