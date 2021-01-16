@@ -1048,17 +1048,17 @@ typedef struct sapp_touchpoint {
 } sapp_touchpoint;
 
 typedef enum sapp_mousebutton {
-    SAPP_MOUSEBUTTON_INVALID = -1,
-    SAPP_MOUSEBUTTON_LEFT = 0,
-    SAPP_MOUSEBUTTON_RIGHT = 1,
-    SAPP_MOUSEBUTTON_MIDDLE = 2,
+    SAPP_MOUSEBUTTON_LEFT = 0x0,
+    SAPP_MOUSEBUTTON_RIGHT = 0x1,
+    SAPP_MOUSEBUTTON_MIDDLE = 0x2,
+    SAPP_MOUSEBUTTON_INVALID = 0x100,
 } sapp_mousebutton;
 
 enum {
-    SAPP_MODIFIER_SHIFT = (1<<0),
-    SAPP_MODIFIER_CTRL = (1<<1),
-    SAPP_MODIFIER_ALT = (1<<2),
-    SAPP_MODIFIER_SUPER = (1<<3)
+    SAPP_MODIFIER_SHIFT = 0x1,
+    SAPP_MODIFIER_CTRL = 0x2,
+    SAPP_MODIFIER_ALT = 0x4,
+    SAPP_MODIFIER_SUPER = 0x8
 };
 
 typedef struct sapp_window { uint32_t id; } sapp_window;
@@ -1164,11 +1164,9 @@ typedef struct sapp_html5_fetch_response {
     void* user_data;        /* user-provided user data pointer */
 } sapp_html5_fetch_response;
 
-typedef void (*sapp_html5_fetch_callback) (const sapp_html5_fetch_response*);
-
 typedef struct sapp_html5_fetch_request {
     int dropped_file_index;                 /* 0..sapp_get_num_dropped_files()-1 */
-    sapp_html5_fetch_callback callback;     /* response callback function pointer (required) */
+    void (*callback)(const sapp_html5_fetch_response*);     /* response callback function pointer (required) */
     void* buffer_ptr;                       /* pointer to buffer to load data into */
     uint32_t buffer_size;                   /* size in bytes of buffer */
     void* user_data;                        /* optional userdata pointer */
@@ -1290,7 +1288,7 @@ SOKOL_APP_API_DECL int sapp_get_num_dropped_files(void);
 SOKOL_APP_API_DECL const char* sapp_get_dropped_file_path(int index);
 
 /* special run-function for SOKOL_NO_ENTRY (in standard mode this is an empty stub) */
-SOKOL_APP_API_DECL int sapp_run(const sapp_desc* desc);
+SOKOL_APP_API_DECL void sapp_run(const sapp_desc* desc);
 
 /* GL: return true when GLES2 fallback is active (to detect fallback from GLES3) */
 SOKOL_APP_API_DECL bool sapp_gles2(void);
@@ -1343,7 +1341,7 @@ SOKOL_APP_API_DECL const void* sapp_android_get_native_activity(void);
 } /* extern "C" */
 
 /* reference-based equivalents for C++ */
-inline int sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
+inline void sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
 
 #endif
 
@@ -1623,6 +1621,7 @@ inline int sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
     #include <GL/gl.h>
     #include <dlfcn.h> /* dlopen, dlsym, dlclose */
     #include <limits.h> /* LONG_MAX */
+    #include <pthread.h>    /* only used a linker-guard, search for _sapp_linux_run() and see first comment */
 #endif
 
 /*== MACOS DECLARATIONS ======================================================*/
@@ -3188,16 +3187,16 @@ _SOKOL_PRIVATE void _sapp_macos_frame(void) {
         NSRect screen_rect = NSScreen.mainScreen.frame;
         _sapp.window_width = screen_rect.size.width;
         _sapp.window_height = screen_rect.size.height;
-        if (_sapp.desc.high_dpi) {
-            _sapp.framebuffer_width = 2 * _sapp.window_width;
-            _sapp.framebuffer_height = 2 * _sapp.window_height;
-        }
-        else {
-            _sapp.framebuffer_width = _sapp.window_width;
-            _sapp.framebuffer_height = _sapp.window_height;
-        }
-        _sapp.dpi_scale = (float)_sapp.framebuffer_width / (float) _sapp.window_width;
     }
+    if (_sapp.desc.high_dpi) {
+        _sapp.framebuffer_width = 2 * _sapp.window_width;
+        _sapp.framebuffer_height = 2 * _sapp.window_height;
+    }
+    else {
+        _sapp.framebuffer_width = _sapp.window_width;
+        _sapp.framebuffer_height = _sapp.window_height;
+    }
+    _sapp.dpi_scale = (float)_sapp.framebuffer_width / (float) _sapp.window_width;
     const NSUInteger style =
         NSWindowStyleMaskTitled |
         NSWindowStyleMaskClosable |
@@ -3958,6 +3957,8 @@ _SOKOL_PRIVATE void _sapp_ios_show_keyboard(bool shown) {
 extern "C" {
 #endif
 
+typedef void (*_sapp_html5_fetch_callback) (const sapp_html5_fetch_response*);
+
 /* this function is called from a JS event handler when the user hides
     the onscreen keyboard pressing the 'dismiss keyboard key'
 */
@@ -4032,7 +4033,7 @@ EMSCRIPTEN_KEEPALIVE void _sapp_emsc_end_drop(int x, int y) {
     }
 }
 
-EMSCRIPTEN_KEEPALIVE void _sapp_emsc_invoke_fetch_cb(int index, int success, int error_code, sapp_html5_fetch_callback callback, uint32_t fetched_size, void* buf_ptr, uint32_t buf_size, void* user_data) {
+EMSCRIPTEN_KEEPALIVE void _sapp_emsc_invoke_fetch_cb(int index, int success, int error_code, _sapp_html5_fetch_callback callback, uint32_t fetched_size, void* buf_ptr, uint32_t buf_size, void* user_data) {
     sapp_html5_fetch_response response;
     memset(&response, 0, sizeof(response));
     response.succeeded = (0 != success);
@@ -4162,7 +4163,7 @@ EM_JS(uint32_t, sapp_js_dropped_file_size, (int index), {
     }
 });
 
-EM_JS(void, sapp_js_fetch_dropped_file, (int index, sapp_html5_fetch_callback callback, void* buf_ptr, uint32_t buf_size, void* user_data), {
+EM_JS(void, sapp_js_fetch_dropped_file, (int index, _sapp_html5_fetch_callback callback, void* buf_ptr, uint32_t buf_size, void* user_data), {
     var reader = new FileReader();
     reader.onload = function(loadEvent) {
         var content = loadEvent.target.result;
@@ -10421,6 +10422,14 @@ _SOKOL_PRIVATE void _sapp_x11_process_event(XEvent* event) {
 }
 
 _SOKOL_PRIVATE void _sapp_linux_run(const sapp_desc* desc) {
+    /* The following lines are here to trigger a linker error instead of an
+        obscure runtime error if the user has forgotten to add -pthread to
+        the compiler or linker options. They have no other purpose.
+    */
+    pthread_attr_t pthread_attr;
+    pthread_attr_init(&pthread_attr);
+    pthread_attr_destroy(&pthread_attr);
+
     _sapp_init_state(desc);
     _sapp.x11.window_state = NormalState;
 
@@ -10490,7 +10499,7 @@ int main(int argc, char* argv[]) {
 
 /*== PUBLIC API FUNCTIONS ====================================================*/
 #if defined(SOKOL_NO_ENTRY)
-SOKOL_API_IMPL int sapp_run(const sapp_desc* desc) {
+SOKOL_API_IMPL void sapp_run(const sapp_desc* desc) {
     SOKOL_ASSERT(desc);
     #if defined(_SAPP_MACOS)
         _sapp_macos_run(desc);
@@ -10508,7 +10517,6 @@ SOKOL_API_IMPL int sapp_run(const sapp_desc* desc) {
         // calling sapp_run() directly is not supported on Android)
         _sapp_fail("sapp_run() not supported on this platform!");
     #endif
-    return 0;
 }
 
 /* this is just a stub so the linker doesn't complain */
@@ -10521,9 +10529,8 @@ sapp_desc sokol_main(int argc, char* argv[]) {
 }
 #else
 /* likewise, in normal mode, sapp_run() is just an empty stub */
-SOKOL_API_IMPL int sapp_run(const sapp_desc* desc) {
+SOKOL_API_IMPL void sapp_run(const sapp_desc* desc) {
     _SOKOL_UNUSED(desc);
-    return 0;
 }
 #endif
 
