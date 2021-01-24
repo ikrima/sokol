@@ -1088,17 +1088,15 @@ typedef struct sapp_event {
 } sapp_event;
 
 typedef struct sapp_window_desc {
+    uint32_t _start_canary;
     int width;                          /* the preferred width of the window / canvas */
     int height;                         /* the preferred height of the window / canvas */
     int sample_count;                   /* MSAA sample count */
     int swap_interval;                  /* the preferred swap interval (ignored on some platforms) */
-    bool high_dpi;                      /* whether the rendering canvas is full-resolution on HighDPI displays */
     bool fullscreen;                    /* whether the window should be created in fullscreen mode */
-    bool alpha;                         /* whether the framebuffer should have an alpha channel (ignored on some platforms) */
     const char* window_title;           /* the window title as UTF-8 encoded string */
-    bool user_cursor;                   /* if true, user is expected to manage cursor image in SAPP_EVENTTYPE_UPDATE_CURSOR */
-
     sapp_window parent;                 /* window handle */
+    uint32_t _end_canary;
 } sapp_window_desc;
 
 typedef struct sapp_desc {
@@ -1342,6 +1340,7 @@ SOKOL_APP_API_DECL const void* sapp_android_get_native_activity(void);
 
 /* reference-based equivalents for C++ */
 inline void sapp_run(const sapp_desc& desc) { return sapp_run(&desc); }
+inline sapp_window sapp_create_window(const sapp_window_desc& desc) { return sapp_create_window(&desc); }
 
 #endif
 
@@ -2058,11 +2057,13 @@ typedef struct {
 #define _SAPP_PIXELFORMAT_DEPTH_STENCIL (42)
 
 _SOKOL_PRIVATE sapp_window_desc _sapp_window_desc_defaults(const sapp_window_desc *desc) {
+    SOKOL_ASSERT((desc->_start_canary == 0) && (desc->_end_canary == 0));
     sapp_window_desc def = *desc;
     def.width = _sapp_def(desc->width, 640);
     def.height = _sapp_def(desc->height, 640);
     def.sample_count = _sapp_def(desc->sample_count, 1);
     def.swap_interval = (desc->swap_interval<0) ? 0 : _sapp_def(desc->swap_interval, 1);
+    def.window_title = _sapp_def(desc->window_title, "sokol_app");
     return def;
 }
 
@@ -6359,12 +6360,7 @@ _SOKOL_PRIVATE sapp_window _sapp_win32_create_window(const sapp_window_desc *des
     if (handle.id) {
         sapp_window_desc desc_def = _sapp_window_desc_defaults(desc);
         _sapp_window* window = _sapp_lookup_window(handle);
-        if (desc_def.window_title) {
-            _sapp_strcpy(desc_def.window_title, window->window_title, sizeof(window->window_title));
-        }
-        else {
-            _sapp_strcpy("sokol_app", window->window_title, sizeof(window->window_title));
-        }
+        _sapp_strcpy(desc_def.window_title, window->window_title, sizeof(window->window_title));
         _sapp_win32_uwp_utf8_to_wide(window->window_title, window->window_title_wide, sizeof(window->window_title_wide));
         HWND hwnd = _sapp_win32_create_hwnd(&desc_def, window->window_title_wide, handle);
         _sapp_win32_window* win32_window = _sapp_window_platform_data(_sapp_win32_window*, window);
@@ -6574,13 +6570,10 @@ _SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
             .height = _sapp.desc.height,
             .sample_count = _sapp.desc.sample_count,
             .swap_interval = _sapp.desc.swap_interval,
-            .high_dpi = _sapp.desc.high_dpi,
             .fullscreen = _sapp.desc.fullscreen,
-            .alpha = _sapp.desc.alpha,
             .window_title = _sapp.desc.window_title,
-            .user_cursor = _sapp.desc.user_cursor
         };
-        _sapp_win32_create_window(&sapp_wndw_desc);
+        sapp_create_window(&sapp_wndw_desc);
     }
 
     {
