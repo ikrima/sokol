@@ -5448,7 +5448,7 @@ _SOKOL_PRIVATE void _sapp_d3d11_create_swapchain(HWND hwnd, int framebuffer_widt
     sc_desc->BufferDesc.Width = framebuffer_width;
     sc_desc->BufferDesc.Height = framebuffer_height;
     sc_desc->BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    //TODO: ikrimae: #sokol: Fix monitor refresh rate setting & sleeping
+    //TODO: ikrimae: #TpLib-sokol: Fix monitor refresh rate setting & sleeping
     sc_desc->BufferDesc.RefreshRate.Numerator = 60;
     sc_desc->BufferDesc.RefreshRate.Denominator = 1;
     sc_desc->OutputWindow = hwnd;
@@ -6616,7 +6616,7 @@ _SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
                 _sapp_d3d11_present(&win32_win->d3d11_resources);
 
                 if (window->handle.id == main_handle.id && IsIconic(win32_win->hwnd)) {
-                    //TODO: ikrimae: #sokol: Fix monitor refresh rate setting & sleeping
+                    //TODO: ikrimae: #TpLib-sokol: Fix monitor refresh rate setting & sleeping
                     Sleep(16 * _sapp.swap_interval);
                 }
                 window = _sapp_windows_next(&present_iter);
