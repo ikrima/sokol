@@ -1087,6 +1087,13 @@ typedef struct sapp_event {
     int framebuffer_height;
 } sapp_event;
 
+typedef struct sapp_win32_window_desc {
+    int wdc_left;                          /* the preferred width of the window / canvas */
+    int wdc_top;                         /* the preferred height of the window / canvas */
+    unsigned long dwStyle;
+    unsigned long dwExStyle;
+} sapp_win32_window_desc;
+
 typedef struct sapp_window_desc {
     uint32_t _start_canary;
     int width;                          /* the preferred width of the window / canvas */
@@ -1096,6 +1103,7 @@ typedef struct sapp_window_desc {
     bool fullscreen;                    /* whether the window should be created in fullscreen mode */
     const char* window_title;           /* the window title as UTF-8 encoded string */
     sapp_window parent;                 /* window handle */
+    sapp_win32_window_desc win32;
     uint32_t _end_canary;
 } sapp_window_desc;
 
@@ -1141,6 +1149,7 @@ typedef struct sapp_desc {
     bool gl_force_gles2;                /* if true, setup GLES2/WebGL even if GLES3/WebGL2 is available */
 
     int num_windows;                    /* default: 1 (main) */
+    sapp_win32_window_desc win32;
 } sapp_desc;
 
 /* HTML5 specific: request and response structs for
@@ -2059,11 +2068,15 @@ typedef struct {
 _SOKOL_PRIVATE sapp_window_desc _sapp_window_desc_defaults(const sapp_window_desc *desc) {
     SOKOL_ASSERT((desc->_start_canary == 0) && (desc->_end_canary == 0));
     sapp_window_desc def = *desc;
-    def.width = _sapp_def(desc->width, 640);
-    def.height = _sapp_def(desc->height, 640);
-    def.sample_count = _sapp_def(desc->sample_count, 1);
-    def.swap_interval = (desc->swap_interval<0) ? 0 : _sapp_def(desc->swap_interval, 1);
-    def.window_title = _sapp_def(desc->window_title, "sokol_app");
+    def.width            = _sapp_def(desc->width, 640);
+    def.height           = _sapp_def(desc->height, 480);
+    def.sample_count     = _sapp_def(desc->sample_count, 1);
+    def.swap_interval    = (desc->swap_interval < 0) ? 0 : _sapp_def(desc->swap_interval, 1);
+    def.window_title     = _sapp_def(desc->window_title, "sokol_app");
+#if defined(_SAPP_WIN32)
+    def.win32.dwStyle  = _sapp_def(desc->win32.dwStyle, WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX);
+    def.win32.dwExStyle = _sapp_def(desc->win32.dwExStyle, WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
+#endif
     return def;
 }
 
@@ -2743,6 +2756,11 @@ _SOKOL_PRIVATE sapp_desc _sapp_desc_defaults(const sapp_desc* in_desc) {
     desc.max_dropped_files = _sapp_def(desc.max_dropped_files, 1);
     desc.max_dropped_file_path_length = _sapp_def(desc.max_dropped_file_path_length, 2048);
     desc.window_title = _sapp_def(desc.window_title, "sokol_app");
+    #if defined(_SAPP_WIN32)
+    desc.num_windows = _sapp_def(desc.num_windows, 1);
+    desc.win32.dwStyle  = _sapp_def(desc.win32.dwStyle, WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX);
+    desc.win32.dwExStyle = _sapp_def(desc.win32.dwExStyle, WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
+    #endif
     return desc;
 }
 
@@ -2778,7 +2796,7 @@ _SOKOL_PRIVATE void _sapp_init_state(const sapp_desc* desc) {
     _sapp.fullscreen = _sapp.desc.fullscreen;
     _sapp.mouse.shown = true;
 
-    _sapp.windows.capacity = _sapp_def(desc->num_windows, 1);
+    _sapp.windows.capacity = desc->num_windows;
 }
 
 _SOKOL_PRIVATE void _sapp_discard_state(void) {
@@ -6307,48 +6325,37 @@ _SOKOL_PRIVATE void _sapp_win32_setup_windows(void) {
     _sapp_init_windows(_sapp.windows.capacity, sizeof(_sapp_win32_window));
 }
 
-_SOKOL_PRIVATE HWND _sapp_win32_create_hwnd(const sapp_window_desc *desc, const wchar_t *window_title, sapp_window handle) {
-    DWORD win_style;
-    const DWORD win_ex_style = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
-    RECT rect = { 0, 0, 0, 0 };
-    /* FIXME parent window */
-    if (desc->fullscreen) {
-        win_style = WS_POPUP | WS_SYSMENU | WS_VISIBLE;
-        rect.right = GetSystemMetrics(SM_CXSCREEN);
-        rect.bottom = GetSystemMetrics(SM_CYSCREEN);
-    }
-    else {
-        win_style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX;
-        rect.right = (int) ((float)desc->width * _sapp.win32.dpi.window_scale);
-        rect.bottom = (int) ((float)desc->height * _sapp.win32.dpi.window_scale);
-    }
-    AdjustWindowRectEx(&rect, win_style, FALSE, win_ex_style);
-    const int win_width = rect.right - rect.left;
-    const int win_height = rect.bottom - rect.top;
-    HWND parent_hwnd = 0;
+_SOKOL_PRIVATE HWND _sapp_win32_create_hwnd(const sapp_window_desc *desc, const wchar_t *window_title_wide, sapp_window handle) {
     _sapp_window* parent_window = _sapp_lookup_window(desc->parent);
-    if (parent_window) {
-        _sapp_win32_window* win32_parent = _sapp_window_platform_data(_sapp_win32_window*, parent_window);
-        parent_hwnd = win32_parent->hwnd;
-    }
+    _sapp_win32_window* win32_parent = parent_window ? _sapp_window_platform_data(_sapp_win32_window*, parent_window) : NULL;
+    HWND parent_hwnd = win32_parent ? win32_parent->hwnd : 0;
+
+    const DWORD win_style = desc->fullscreen ? (WS_POPUP|WS_SYSMENU|WS_VISIBLE) : desc->win32.dwStyle;
+    const DWORD win_ex_style = desc->win32.dwExStyle;
+    RECT  rect      = desc->fullscreen
+        ? RECT{0, 0, GetSystemMetrics(SM_CXSCREEN) , GetSystemMetrics(SM_CYSCREEN)}
+        : RECT{0, 0, desc->width, desc->height};
+    AdjustWindowRectEx(&rect, win_style, FALSE, win_ex_style);
+    const int wdc_left = desc->win32.wdc_left;
+    const int wdc_top = desc->win32.wdc_top;
+    const int wdc_width = rect.right - rect.left;
+    const int wdc_height = rect.bottom - rect.top;
 
     _sapp.win32.in_create_window = true;
     HWND hwnd = CreateWindowExW(
         win_ex_style,               /* dwExStyle */
         L"SOKOLAPP",                /* lpClassName */
-        window_title,               /* lpWindowName */
+        window_title_wide,          /* lpWindowName */
         win_style,                  /* dwStyle */
-        CW_USEDEFAULT,              /* X */
-        CW_USEDEFAULT,              /* Y */
-        win_width,                  /* nWidth */
-        win_height,                 /* nHeight */
+        wdc_left,                   /* X */
+        wdc_top,                    /* Y */
+        wdc_width ,                 /* nWidth */
+        wdc_height ,                /* nHeight */
         parent_hwnd,                /* hWndParent */
         NULL,                       /* hMenu */
         GetModuleHandle(NULL),      /* hInstance */
         NULL);                      /* lParam */
-
     SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)(uintptr_t)handle.id);
-
     ShowWindow(hwnd, SW_SHOW);
     _sapp.win32.in_create_window = false;
 
@@ -6361,6 +6368,7 @@ _SOKOL_PRIVATE sapp_window _sapp_win32_create_window(const sapp_window_desc *des
         sapp_window_desc desc_def = _sapp_window_desc_defaults(desc);
         _sapp_window* window = _sapp_lookup_window(handle);
         _sapp_strcpy(desc_def.window_title, window->window_title, sizeof(window->window_title));
+        desc_def.window_title = window->window_title;
         _sapp_win32_uwp_utf8_to_wide(window->window_title, window->window_title_wide, sizeof(window->window_title_wide));
         HWND hwnd = _sapp_win32_create_hwnd(&desc_def, window->window_title_wide, handle);
         _sapp_win32_window* win32_window = _sapp_window_platform_data(_sapp_win32_window*, window);
@@ -6572,6 +6580,7 @@ _SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
             .swap_interval = _sapp.desc.swap_interval,
             .fullscreen = _sapp.desc.fullscreen,
             .window_title = _sapp.desc.window_title,
+            .win32 = _sapp.desc.win32,
         };
         sapp_create_window(&sapp_wndw_desc);
     }
