@@ -2300,7 +2300,6 @@ SOKOL_GFX_API_DECL void sg_fail_pass(sg_pass pass_id);
 /* rendering contexts (optional) */
 SOKOL_GFX_API_DECL sg_context sg_setup_context(const sg_context_desc* desc);
 SOKOL_GFX_API_DECL void sg_activate_context(sg_context ctx_id);
-SOKOL_GFX_API_DECL void* sg_active_context_userdata(void); /* ? */
 SOKOL_GFX_API_DECL void sg_discard_context(sg_context ctx_id);
 
 /* Backend-specific helper functions, these may come in handy for mixing
@@ -3219,8 +3218,11 @@ typedef _sg_attachment_common_t _sg_attachment_t;
 
 typedef struct {
     _sg_slot_t slot;
-    void* context_userdata;
-
+    const void* (*render_target_view_cb)(void);
+    const void* (*render_target_view_userdata_cb)(void*);
+    const void* (*depth_stencil_view_cb)(void);
+    const void* (*depth_stencil_view_userdata_cb)(void*);
+    void* user_data;
 } _sg_d3d11_context_t;
 typedef _sg_d3d11_context_t _sg_context_t;
 
@@ -7665,7 +7667,11 @@ _SOKOL_PRIVATE void _sg_d3d11_activate_context(_sg_context_t* ctx) {
 
 _SOKOL_PRIVATE sg_resource_state _sg_d3d11_create_context(_sg_context_t* ctx, const sg_context_desc* desc) {
     SOKOL_ASSERT(ctx);
-    ctx->context_userdata = desc->d3d11.user_data;
+    ctx->render_target_view_cb = desc->d3d11.render_target_view_cb;
+    ctx->render_target_view_userdata_cb = desc->d3d11.render_target_view_userdata_cb;
+    ctx->depth_stencil_view_cb = desc->d3d11.depth_stencil_view_cb;
+    ctx->depth_stencil_view_userdata_cb = desc->d3d11.depth_stencil_view_userdata_cb;
+    ctx->user_data = desc->d3d11.user_data;
     return SG_RESOURCESTATE_VALID;
 }
 
@@ -8418,11 +8424,15 @@ _SOKOL_PRIVATE _sg_image_t* _sg_d3d11_pass_ds_image(const _sg_pass_t* pass) {
     return pass->d3d11.ds_att.image;
 }
 
+// DISCUSS: Had to to forward declare this method here :/
+_SOKOL_PRIVATE _sg_context_t* _sg_lookup_context(const _sg_pools_t* p, uint32_t ctx_id);
 _SOKOL_PRIVATE void _sg_d3d11_begin_pass(_sg_pass_t* pass, const sg_pass_action* action, int w, int h) {
     SOKOL_ASSERT(action);
     SOKOL_ASSERT(!_sg.d3d11.in_pass);
-    SOKOL_ASSERT(_sg.d3d11.rtv_cb || _sg.d3d11.rtv_userdata_cb);
-    SOKOL_ASSERT(_sg.d3d11.dsv_cb || _sg.d3d11.dsv_userdata_cb);
+    _sg_context_t* cur_context = _sg_lookup_context(&_sg.pools, _sg.active_context.id);
+    SOKOL_ASSERT(cur_context);
+    SOKOL_ASSERT(cur_context->render_target_view_cb || cur_context->render_target_view_userdata_cb);
+    SOKOL_ASSERT(cur_context->depth_stencil_view_cb || cur_context->depth_stencil_view_userdata_cb);
     _sg.d3d11.in_pass = true;
     _sg.d3d11.cur_width = w;
     _sg.d3d11.cur_height = h;
@@ -8448,19 +8458,19 @@ _SOKOL_PRIVATE void _sg_d3d11_begin_pass(_sg_pass_t* pass, const sg_pass_action*
         _sg.d3d11.cur_pass_id.id = SG_INVALID_ID;
         _sg.d3d11.num_rtvs = 1;
         if (_sg.d3d11.rtv_cb) {
-            _sg.d3d11.cur_rtvs[0] = (ID3D11RenderTargetView*) _sg.d3d11.rtv_cb();
+            _sg.d3d11.cur_rtvs[0] = (ID3D11RenderTargetView*) cur_context->render_target_view_cb();
         }
         else {
-            _sg.d3d11.cur_rtvs[0] = (ID3D11RenderTargetView*) _sg.d3d11.rtv_userdata_cb(_sg.d3d11.user_data);
+            _sg.d3d11.cur_rtvs[0] = (ID3D11RenderTargetView*) cur_context->render_target_view_userdata_cb(cur_context->user_data);
         }
         for (int i = 1; i < SG_MAX_COLOR_ATTACHMENTS; i++) {
             _sg.d3d11.cur_rtvs[i] = 0;
         }
         if (_sg.d3d11.dsv_cb) {
-            _sg.d3d11.cur_dsv = (ID3D11DepthStencilView*) _sg.d3d11.dsv_cb();
+            _sg.d3d11.cur_dsv = (ID3D11DepthStencilView*) cur_context->depth_stencil_view_cb();
         }
         else {
-            _sg.d3d11.cur_dsv = (ID3D11DepthStencilView*) _sg.d3d11.dsv_userdata_cb(_sg.d3d11.user_data);
+            _sg.d3d11.cur_dsv = (ID3D11DepthStencilView*) cur_context->depth_stencil_view_userdata_cb(cur_context->user_data);
         }
         SOKOL_ASSERT(_sg.d3d11.cur_rtvs[0] && _sg.d3d11.cur_dsv);
     }
@@ -14293,15 +14303,6 @@ SOKOL_API_IMPL void sg_activate_context(sg_context ctx_id) {
     _sg_context_t* ctx = _sg_lookup_context(&_sg.pools, ctx_id.id);
     /* NOTE: ctx can be 0 here if the context is no longer valid */
     _sg_activate_context(ctx);
-}
-
-SOKOL_API_IMPL void *sg_active_context_userdata(void) {
-#if defined(SOKOL_D3D11)
-    _sg_context_t* ctx = _sg_lookup_context(&_sg.pools, _sg.active_context.id);
-    return ctx ? ctx->context_userdata : 0;
-#else
-    return 0;
-#endif
 }
 
 SOKOL_API_IMPL sg_trace_hooks sg_install_trace_hooks(const sg_trace_hooks* trace_hooks) {
