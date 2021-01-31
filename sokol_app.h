@@ -2079,21 +2079,13 @@ _SOKOL_PRIVATE sapp_window_desc _sapp_window_desc_defaults(const sapp_window_des
     return def;
 }
 
-/* keep these ?. so we internally do not have to:
- * sapp_window some_handle = ...;
- * sapp_window main_window_handle = sapp_main_window();
- * if (some_handle.id == main_window_handle.id)
-*/
-#define _SAPP_MAIN_WINDOW_HANDLE_ID (0x80000000)
-#define _sapp_is_main_window(h) (h).id == _SAPP_MAIN_WINDOW_HANDLE_ID
-
 typedef struct {
     HWND hwnd;
     HDC dc;
 #if defined(SOKOL_D3D11)
     _sokol_d3d11_default_window_resources d3d11_resources;
 #else
-    #error("Unimplemented multiviewport platform")    
+    #error("Unimplemented multiviewport platform")
 #endif
 } _sapp_win32_window;
 
@@ -5454,17 +5446,17 @@ _SOKOL_PRIVATE void _sapp_d3d11_create_device(void) {
         D3D11_SDK_VERSION,              /* SDKVersion */
         &_sapp.d3d11.device,            /* ppDevice */
         &feature_level,                 /* pFeatureLevel */
-        &_sapp.d3d11.device_context);   /* ppImmediateContext */        
+        &_sapp.d3d11.device_context);   /* ppImmediateContext */
     _SOKOL_UNUSED(hr);
     SOKOL_ASSERT(SUCCEEDED(hr) && _sapp.d3d11.device && _sapp.d3d11.device_context);
-    
+
     // We need a dxgi factory to create multiple swapchains
     hr = _sapp_dxgi_CreateDXGIFactory(&_sapp.d3d11.dxgi_factory);
     SOKOL_ASSERT(SUCCEEDED(hr) && _sapp.d3d11.dxgi_factory);
 }
 
 // Separate swap chain creation per window
-_SOKOL_PRIVATE void _sapp_d3d11_create_swapchain(_sapp_window* window) {     
+_SOKOL_PRIVATE void _sapp_d3d11_create_swapchain(_sapp_window* window) {
     DXGI_SWAP_CHAIN_DESC* sc_desc = &window->win32.d3d11_resources.swap_chain_desc;
     sc_desc->BufferDesc.Width = window->width;
     sc_desc->BufferDesc.Height = window->height;
@@ -5503,32 +5495,31 @@ _SOKOL_PRIVATE void _sapp_d3d11_destroy_swapchain(IDXGISwapChain** swap_chain) {
     _SAPP_SAFE_RELEASE(*swap_chain);
 }
 
-_SOKOL_PRIVATE void _sapp_d3d11_create_default_render_target(int framebuffer_width, int framebuffer_height, _sokol_d3d11_default_window_resources* resources) {
+_SOKOL_PRIVATE void _sapp_d3d11_create_default_render_target(_sapp_window* window) {
+    SOKOL_ASSERT(0 == window->win32.d3d11_resources.rt);
+    SOKOL_ASSERT(0 == window->win32.d3d11_resources.rtv);
+    SOKOL_ASSERT(0 == window->win32.d3d11_resources.msaa_rt);
+    SOKOL_ASSERT(0 == window->win32.d3d11_resources.msaa_rtv);
+    SOKOL_ASSERT(0 == window->win32.d3d11_resources.ds);
+    SOKOL_ASSERT(0 == window->win32.d3d11_resources.dsv);
 
     HRESULT hr;
 
     /* view for the swapchain-created framebuffer */
-    IDXGISwapChain* swap_chain = resources->swap_chain;
-    ID3D11Texture2D** rt = &resources->rt;
-    ID3D11RenderTargetView** rtv = &resources->rtv;
-    ID3D11Texture2D** msaa_rt = &resources->msaa_rt;
-    ID3D11RenderTargetView** msaa_rtv = &resources->msaa_rtv;
-    ID3D11Texture2D** ds = &resources->ds;
-    ID3D11DepthStencilView** dsv = &resources->dsv;
     #ifdef __cplusplus
-    hr = _sapp_dxgi_GetBuffer(swap_chain, 0, IID_ID3D11Texture2D, (void**)rt);
+    hr = _sapp_dxgi_GetBuffer(window->win32.d3d11_resources.swap_chain, 0, IID_ID3D11Texture2D, (void**)&window->win32.d3d11_resources.rt);
     #else
-    hr = _sapp_dxgi_GetBuffer(swap_chain, 0, &IID_ID3D11Texture2D, (void**)rt);
+    hr = _sapp_dxgi_GetBuffer(window->win32.d3d11_resources.swap_chain, 0, &IID_ID3D11Texture2D, (void**)&window->win32.d3d11_resources.rt);
     #endif
-    SOKOL_ASSERT(SUCCEEDED(hr) && *rt);
-    hr = _sapp_d3d11_CreateRenderTargetView(_sapp.d3d11.device, (ID3D11Resource*)*rt, NULL, rtv);
-    SOKOL_ASSERT(SUCCEEDED(hr) && *rtv);
+    SOKOL_ASSERT(SUCCEEDED(hr) && window->win32.d3d11_resources.rt);
+    hr = _sapp_d3d11_CreateRenderTargetView(_sapp.d3d11.device, (ID3D11Resource*)window->win32.d3d11_resources.rt, NULL, &window->win32.d3d11_resources.rtv);
+    SOKOL_ASSERT(SUCCEEDED(hr) && window->win32.d3d11_resources.rtv);
 
     /* common desc for MSAA and depth-stencil texture */
     D3D11_TEXTURE2D_DESC tex_desc;
     memset(&tex_desc, 0, sizeof(tex_desc));
-    tex_desc.Width = framebuffer_width;
-    tex_desc.Height = framebuffer_height;
+    tex_desc.Width = window->framebuffer_width;
+    tex_desc.Height = window->framebuffer_height;
     tex_desc.MipLevels = 1;
     tex_desc.ArraySize = 1;
     tex_desc.Usage = D3D11_USAGE_DEFAULT;
@@ -5539,19 +5530,19 @@ _SOKOL_PRIVATE void _sapp_d3d11_create_default_render_target(int framebuffer_wid
     /* create MSAA texture and view if antialiasing requested */
     if (_sapp.sample_count > 1) {
         tex_desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-        hr = _sapp_d3d11_CreateTexture2D(_sapp.d3d11.device, &tex_desc, NULL, msaa_rt);
-        SOKOL_ASSERT(SUCCEEDED(hr) && *msaa_rt);
-        hr = _sapp_d3d11_CreateRenderTargetView(_sapp.d3d11.device, (ID3D11Resource*)*msaa_rt, NULL, msaa_rtv);
-        SOKOL_ASSERT(SUCCEEDED(hr) && *msaa_rtv);
+        hr = _sapp_d3d11_CreateTexture2D(_sapp.d3d11.device, &tex_desc, NULL, &window->win32.d3d11_resources.msaa_rt);
+        SOKOL_ASSERT(SUCCEEDED(hr) && window->win32.d3d11_resources.msaa_rt);
+        hr = _sapp_d3d11_CreateRenderTargetView(_sapp.d3d11.device, (ID3D11Resource*)window->win32.d3d11_resources.msaa_rt, NULL, &window->win32.d3d11_resources.msaa_rtv);
+        SOKOL_ASSERT(SUCCEEDED(hr) && window->win32.d3d11_resources.msaa_rtv);
     }
 
     /* texture and view for the depth-stencil-surface */
     tex_desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
     tex_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-    hr = _sapp_d3d11_CreateTexture2D(_sapp.d3d11.device, &tex_desc, NULL, ds);
-    SOKOL_ASSERT(SUCCEEDED(hr) && *ds);
-    hr = _sapp_d3d11_CreateDepthStencilView(_sapp.d3d11.device, (ID3D11Resource*)*ds, NULL, dsv);
-    SOKOL_ASSERT(SUCCEEDED(hr) && *dsv);
+    hr = _sapp_d3d11_CreateTexture2D(_sapp.d3d11.device, &tex_desc, NULL, &window->win32.d3d11_resources.ds);
+    SOKOL_ASSERT(SUCCEEDED(hr) && window->win32.d3d11_resources.ds);
+    hr = _sapp_d3d11_CreateDepthStencilView(_sapp.d3d11.device, (ID3D11Resource*)window->win32.d3d11_resources.ds, NULL, &window->win32.d3d11_resources.dsv);
+    SOKOL_ASSERT(SUCCEEDED(hr) && window->win32.d3d11_resources.dsv);
 }
 
 _SOKOL_PRIVATE void _sapp_d3d11_destroy_default_render_target(_sokol_d3d11_default_window_resources* resources) {
@@ -5567,7 +5558,7 @@ _SOKOL_PRIVATE void _sapp_d3d11_resize_default_render_target(_sapp_window* windo
     if (window->win32.d3d11_resources.swap_chain) {
         _sapp_d3d11_destroy_default_render_target(&window->win32.d3d11_resources);
         _sapp_dxgi_ResizeBuffers(window->win32.d3d11_resources.swap_chain, window->win32.d3d11_resources.swap_chain_desc.BufferCount, window->width, window->height, DXGI_FORMAT_B8G8R8A8_UNORM, 0);
-        _sapp_d3d11_create_default_render_target(window->width, window->height, &window->win32.d3d11_resources);
+        _sapp_d3d11_create_default_render_target(window);
     }
 }
 
@@ -5967,39 +5958,31 @@ _SOKOL_PRIVATE void _sapp_win32_lock_mouse(bool lock, sapp_window window) {
 /* updates current window and framebuffer size from the window's client rect, returns true if size has changed */
 _SOKOL_PRIVATE bool _sapp_win32_update_dimensions(_sapp_window* window) {
     RECT rect;
-    int window_width;
-    int window_height;
-    int framebuffer_width = window->framebuffer_width;
-    int framebuffer_height = window->framebuffer_height;
     bool res = false;
 
     if (GetClientRect(window->win32.hwnd, &rect)) {
-        window_width = (int)((float)(rect.right - rect.left) / _sapp.win32.dpi.window_scale);
-        window_height = (int)((float)(rect.bottom - rect.top) / _sapp.win32.dpi.window_scale);
-        const int fb_width = (int)((float)window_width * _sapp.win32.dpi.content_scale);
-        const int fb_height = (int)((float)window_height * _sapp.win32.dpi.content_scale);
-        if ((fb_width != framebuffer_width) || (fb_height != framebuffer_height)) {
-            framebuffer_width = fb_width;
-            framebuffer_height = fb_height;
+        window->width = (int)((float)(rect.right - rect.left) / _sapp.win32.dpi.window_scale);
+        window->height = (int)((float)(rect.bottom - rect.top) / _sapp.win32.dpi.window_scale);
+        const int fb_width = (int)((float)window->width * _sapp.win32.dpi.content_scale);
+        const int fb_height = (int)((float)window->height * _sapp.win32.dpi.content_scale);
+        if ((fb_width != window->framebuffer_width) || (fb_height != window->framebuffer_height)) {
+            window->framebuffer_width = fb_width;
+            window->framebuffer_height = fb_height;
             /* prevent a framebuffer size of 0 when window is minimized */
-            if (framebuffer_width == 0) {
-                framebuffer_width = 1;
+            if (window->framebuffer_width == 0) {
+                window->framebuffer_width = 1;
             }
-            if (framebuffer_height == 0) {
-                framebuffer_height = 1;
+            if (window->framebuffer_height == 0) {
+                window->framebuffer_height = 1;
             }
             res = true;
         }
     }
     else {
-        window_width = window_height = 1;
-        framebuffer_width = framebuffer_height = 1;
+        window->width = window->height = 1;
+        window->framebuffer_width = window->framebuffer_height = 1;
     }
 
-    window->height = window_height;
-    window->width = window_width;
-    window->framebuffer_height = framebuffer_height;
-    window->framebuffer_width = framebuffer_width;
     return res;
 }
 
@@ -6115,7 +6098,7 @@ _SOKOL_PRIVATE LRESULT CALLBACK _sapp_win32_wndproc(HWND hWnd, UINT uMsg, WPARAM
                     _sapp_win32_uwp_app_event(handle, SAPP_EVENTTYPE_QUIT_REQUESTED);
                     /* if user code hasn't intervened, quit the app */
                     if (_sapp.quit_requested) {
-                        if (_sapp_is_main_window(handle)) {
+                        if (handle.id == sapp_main_window().id) {
                             _sapp.quit_ordered = true;
                         }
                         else {
@@ -6329,7 +6312,7 @@ _SOKOL_PRIVATE sapp_window _sapp_win32_create_window(const sapp_window_desc *des
         _sapp_strcpy(desc_def.window_title, window->window_title, sizeof(window->window_title));
         desc_def.window_title = window->window_title;
         _sapp_win32_uwp_utf8_to_wide(window->window_title, window->window_title_wide, sizeof(window->window_title_wide));
-        
+
         _sapp_window* parent_window = _sapp_lookup_window(desc_def.parent);
         HWND parent_hwnd = parent_window ? parent_window->win32.hwnd : 0;
 
@@ -6373,8 +6356,7 @@ _SOKOL_PRIVATE sapp_window _sapp_win32_create_window(const sapp_window_desc *des
 #if defined(SOKOL_D3D11)
         _sapp_d3d11_create_swapchain(window);
 
-        _sapp_d3d11_create_default_render_target(window->framebuffer_width, window->framebuffer_height,
-            &window->win32.d3d11_resources);
+        _sapp_d3d11_create_default_render_target(window);
 #endif
     }
     return handle;
@@ -6586,7 +6568,6 @@ _SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
     _sapp.valid = true;
 
     bool done = false;
-    sapp_window main_handle = sapp_main_window();
     _sapp_window* window;
     while (!(done || _sapp.quit_ordered)) {
         MSG msg;
@@ -6606,12 +6587,13 @@ _SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
             window = _sapp_windows_next(&present_iter);
             while (window) {
                 _sapp_d3d11_present(&window->win32.d3d11_resources);
-
-                if (window->handle.id == main_handle.id && IsIconic(window->win32.hwnd)) {
-                    //TODO: ikrimae: #TpLib-sokol: Fix monitor refresh rate setting & sleeping
-                    Sleep(16 * window->swap_interval);
-                }
                 window = _sapp_windows_next(&present_iter);
+            }
+
+            _sapp_window* main_window = _sapp_lookup_window(sapp_main_window());
+            if (main_window && IsIconic(main_window->win32.hwnd)) {
+                //TODO: ikrimae: #TpLib-sokol: Fix monitor refresh rate setting & sleeping
+                Sleep(16 * main_window->swap_interval);
             }
         #endif
         #if defined(SOKOL_GLCORE33)
