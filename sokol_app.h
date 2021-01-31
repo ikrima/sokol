@@ -5458,8 +5458,8 @@ _SOKOL_PRIVATE void _sapp_d3d11_create_device(void) {
 // Separate swap chain creation per window
 _SOKOL_PRIVATE void _sapp_d3d11_create_swapchain(_sapp_window* window) {
     DXGI_SWAP_CHAIN_DESC* sc_desc = &window->d3d11.swap_chain_desc;
-    sc_desc->BufferDesc.Width = window->width;
-    sc_desc->BufferDesc.Height = window->height;
+    sc_desc->BufferDesc.Width = window->framebuffer_width;
+    sc_desc->BufferDesc.Height = window->framebuffer_height;
     sc_desc->BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     //TODO: ikrimae: #TpLib-sokol: Fix monitor refresh rate setting & sleeping
     sc_desc->BufferDesc.RefreshRate.Numerator = 60;
@@ -5557,7 +5557,7 @@ _SOKOL_PRIVATE void _sapp_d3d11_destroy_default_render_target(_sapp_window* wind
 _SOKOL_PRIVATE void _sapp_d3d11_resize_default_render_target(_sapp_window* window) {
     if (window->d3d11.swap_chain) {
         _sapp_d3d11_destroy_default_render_target(window);
-        _sapp_dxgi_ResizeBuffers(window->d3d11.swap_chain, window->d3d11.swap_chain_desc.BufferCount, window->width, window->height, DXGI_FORMAT_B8G8R8A8_UNORM, 0);
+        _sapp_dxgi_ResizeBuffers(window->d3d11.swap_chain, window->d3d11.swap_chain_desc.BufferCount, window->framebuffer_width, window->framebuffer_height, DXGI_FORMAT_B8G8R8A8_UNORM, 0);
         _sapp_d3d11_create_default_render_target(window);
     }
 }
