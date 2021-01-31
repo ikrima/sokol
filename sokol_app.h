@@ -1189,7 +1189,7 @@ SOKOL_APP_API_DECL sapp_window sapp_main_window(void);
 SOKOL_APP_API_DECL sapp_window sapp_create_window(const sapp_window_desc *desc);
 SOKOL_APP_API_DECL int sapp_window_index(sapp_window window);
 SOKOL_APP_API_DECL bool sapp_valid_window(sapp_window window); /* naming ?. keeper ? */
-SOKOL_APP_API_DECL int sapp_destroy_window(sapp_window window);
+SOKOL_APP_API_DECL int sapp_window_request_destroy(sapp_window window);
 
 /* NB:
  * how should we handle the introduction of multiple windows in the public API ?
@@ -10548,11 +10548,11 @@ SOKOL_APP_API_DECL bool sapp_valid_window(sapp_window window) {
     return _sapp_lookup_window(window) != 0;
 }
 
-SOKOL_APP_API_DECL int sapp_destroy_window(sapp_window window) {
+SOKOL_APP_API_DECL int sapp_window_request_destroy(sapp_window window) {
     _sapp_window* win = _sapp_lookup_window(window);
     if (win) {
         /* probably best if platforms handle this in the 'main'-loop
-         * how to handle 'sapp_destroy_window(sapp_main_window())' ?
+         * how to handle 'sapp_window_request_destroy(sapp_main_window())' ?
          * but then the create and destroy is not symmetric, the create
          * is instant and the destroy is delayed... unfortunately this leads to
          * cleanup code like, that _every_ user of sapp has to write:

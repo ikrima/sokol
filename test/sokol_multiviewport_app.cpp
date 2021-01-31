@@ -462,7 +462,7 @@ void smv_appviewport_init()
   };
   platform_io.Platform_DestroyWindow = [](ImGuiViewport* viewport) {
     if (ImGuiSokolViewportData* data = (ImGuiSokolViewportData*) viewport->PlatformUserData) {
-      sapp_destroy_window(data->w);
+      sapp_window_request_destroy(data->w);
       sg_discard_context(data->c);
 
       if (::GetCapture() == data->GetHwnd()) {
