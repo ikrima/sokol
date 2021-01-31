@@ -5374,6 +5374,14 @@ static inline HRESULT _sapp_dxgi_CreateSwapChain(IDXGIFactory* self, ID3D11Devic
 #endif
 }
 
+static inline HRESULT _sapp_dxgi_CreateDXGIFactory(IDXGIFactory** dxgi_factory) {
+    #if defined(__cplusplus)
+        return CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)dxgi_factory);
+    #else
+        return CreateDXGIFactory(&IID_IDXGIFactory, (void**)&_sapp.d3d11.dxgi_factory);
+    #endif
+}
+
 static inline HRESULT _sapp_dxgi_GetBuffer(IDXGISwapChain* self, UINT Buffer, REFIID riid, void** ppSurface) {
     #if defined(__cplusplus)
         return self->GetBuffer(Buffer, riid, ppSurface);
@@ -5447,16 +5455,12 @@ _SOKOL_PRIVATE void _sapp_d3d11_create_device(void) {
         D3D11_SDK_VERSION,              /* SDKVersion */
         &_sapp.d3d11.device,            /* ppDevice */
         &feature_level,                 /* pFeatureLevel */
-        &_sapp.d3d11.device_context);   /* ppImmediateContext */
-
-    SOKOL_ASSERT(SUCCEEDED(hr) && _sapp.d3d11.device && _sapp.d3d11.device_context);
-
-#ifdef __cplusplus
-    hr = CreateDXGIFactory(IID_IDXGIFactory, (void**)&_sapp.d3d11.dxgi_factory);
-#else
-    hr = CreateDXGIFactory(&IID_IDXGIFactory, (void**)&_sapp.d3d11.dxgi_factory);
-#endif
+        &_sapp.d3d11.device_context);   /* ppImmediateContext */        
     _SOKOL_UNUSED(hr);
+    SOKOL_ASSERT(SUCCEEDED(hr) && _sapp.d3d11.device && _sapp.d3d11.device_context);
+    
+    // We need a dxgi factory to create multiple swapchains
+    hr = _sapp_dxgi_CreateDXGIFactory(&_sapp.d3d11.dxgi_factory);
     SOKOL_ASSERT(SUCCEEDED(hr) && _sapp.d3d11.dxgi_factory);
 }
 
