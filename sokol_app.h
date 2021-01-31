@@ -2228,7 +2228,7 @@ _SOKOL_PRIVATE _sapp_window* _sapp_windows_next(_sapp_window_iterator* iter) {
     }
     else {
         for (int i = iter->idx; i < _sapp.window_pool.capacity; ++i) {
-            _sapp_window* window = &_sapp.window_pool.windows[i];
+            _sapp_window* window = _sapp.window_pool.windows + i;
             if ((window->handle.id & 0x80000000)) {
                 iter->idx = i + 1;
                 iter->count++;
@@ -2245,7 +2245,7 @@ _SOKOL_PRIVATE sapp_window _sapp_alloc_window(void) {
     sapp_window res = { 0 };
     if (_sapp.window_pool.size != _sapp.window_pool.capacity) {
         for (int i = 0; i < _sapp.window_pool.capacity; ++i) {
-            _sapp_window* window = &_sapp.window_pool.windows[i];
+            _sapp_window* window = _sapp.window_pool.windows + i;
             if ((window->handle.id & 0x80000000) == 0) {
                 memset(window, 0, sizeof(_sapp_window));
                 window->handle.id = 0x80000000 | i;
@@ -2262,7 +2262,7 @@ _SOKOL_PRIVATE sapp_window _sapp_alloc_window(void) {
 _SOKOL_PRIVATE _sapp_window* _sapp_lookup_window(sapp_window handle) {
     int idx = handle.id & 0x7fffffff;
     if (_sapp.window_pool.capacity > idx) {
-        _sapp_window* window = &_sapp.window_pool.windows[idx];
+        _sapp_window* window = _sapp.window_pool.windows + idx;
         if ((window->handle.id & 0x80000000) && handle.id == window->handle.id)
             return window;
     }
