@@ -6319,8 +6319,7 @@ _SOKOL_PRIVATE void _sapp_win32_setup_windows(void) {
 
 _SOKOL_PRIVATE HWND _sapp_win32_create_hwnd(const sapp_window_desc *desc, const wchar_t *window_title_wide, sapp_window handle) {
     _sapp_window* parent_window = _sapp_lookup_window(desc->parent);
-    _sapp_win32_window* win32_parent = parent_window ? &parent_window->win32 : NULL;
-    HWND parent_hwnd = win32_parent ? win32_parent->hwnd : 0;
+    HWND parent_hwnd = parent_window ? parent_window->win32.hwnd : 0;
 
     const DWORD win_style = desc->fullscreen ? (WS_POPUP|WS_SYSMENU|WS_VISIBLE) : desc->win32.dwStyle;
     const DWORD win_ex_style = desc->win32.dwExStyle;
@@ -6363,9 +6362,8 @@ _SOKOL_PRIVATE sapp_window _sapp_win32_create_window(const sapp_window_desc *des
         desc_def.window_title = window->window_title;
         _sapp_win32_uwp_utf8_to_wide(window->window_title, window->window_title_wide, sizeof(window->window_title_wide));
         HWND hwnd = _sapp_win32_create_hwnd(&desc_def, window->window_title_wide, handle);
-        _sapp_win32_window* win32_window = &window->win32;
-        win32_window->hwnd = hwnd;
-        win32_window->dc = GetDC(hwnd);
+        window->win32.hwnd = hwnd;
+        window->win32.dc = GetDC(hwnd);
 
         _sapp_win32_update_dimensions(hwnd, &window->height, &window->width, &window->framebuffer_width, &window->framebuffer_height);
         DragAcceptFiles(hwnd, 1);
@@ -6377,10 +6375,10 @@ _SOKOL_PRIVATE sapp_window _sapp_win32_create_window(const sapp_window_desc *des
         _sapp_d3d11_create_swapchain(hwnd,
             window->framebuffer_width, window->framebuffer_height,
             window->sample_count,
-            &win32_window->d3d11_resources);
+            &window->win32.d3d11_resources);
 
         _sapp_d3d11_create_default_render_target(window->framebuffer_width, window->framebuffer_height,
-            &win32_window->d3d11_resources);
+            &window->win32.d3d11_resources);
 #endif
     }
     return handle;
@@ -6391,12 +6389,11 @@ _SOKOL_PRIVATE int _sapp_win32_destroy_window(sapp_window handle) {
     if (!window)
         return 0;
 
-    _sapp_win32_window* win32_window = &window->win32;
 #if defined(SOKOL_D3D11)
-    _sapp_d3d11_destroy_default_render_target(&win32_window->d3d11_resources);
-    _sapp_d3d11_destroy_swapchain(&win32_window->d3d11_resources.swap_chain);
+    _sapp_d3d11_destroy_default_render_target(&window->win32.d3d11_resources);
+    _sapp_d3d11_destroy_swapchain(&window->win32.d3d11_resources.swap_chain);
 #endif
-    DestroyWindow(win32_window->hwnd);
+    DestroyWindow(window->win32.hwnd);
     _sapp_destroy_window(handle);
     return 1;
 }
@@ -6579,8 +6576,7 @@ _SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
 
     {
         _sapp_window* mw = _sapp_lookup_window(sapp_main_window());
-        _sapp_win32_window* w32_window = &mw->win32;
-        _sapp.win32.dc = w32_window->dc; /* FIXME: so GL still works, albeit without multi window support */
+        _sapp.win32.dc = mw->win32.dc; /* FIXME: so GL still works, albeit without multi window support */
     }
 
     #if defined(SOKOL_GLCORE33)
@@ -6613,10 +6609,9 @@ _SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
             _sapp_window_iterator present_iter = { 0, 0, _sapp.window_pool.size };
             window = _sapp_windows_next(&present_iter);
             while (window) {
-                _sapp_win32_window *win32_win = &window->win32;
-                _sapp_d3d11_present(&win32_win->d3d11_resources);
+                _sapp_d3d11_present(&window->win32.d3d11_resources);
 
-                if (window->handle.id == main_handle.id && IsIconic(win32_win->hwnd)) {
+                if (window->handle.id == main_handle.id && IsIconic(window->win32.hwnd)) {
                     //TODO: ikrimae: #TpLib-sokol: Fix monitor refresh rate setting & sleeping
                     Sleep(16 * _sapp.swap_interval);
                 }
@@ -6636,13 +6631,11 @@ _SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
                 _sapp_win32_destroy_window(window->handle);
             }
             else {
-                _sapp_win32_window* win32_win = &window->win32;
-
-                if (_sapp_win32_update_dimensions(win32_win->hwnd, &window->height, &window->width,
+                if (_sapp_win32_update_dimensions(window->win32.hwnd, &window->height, &window->width,
                                                   &window->framebuffer_width, &window->framebuffer_height)) {
                     #if defined(SOKOL_D3D11)
                         _sapp_d3d11_resize_default_render_target(window->framebuffer_width, window->framebuffer_height,
-                                                                 &win32_win->d3d11_resources);
+                                                                 &window->win32.d3d11_resources);
                     #endif
                     _sapp_win32_uwp_app_event(window->handle, SAPP_EVENTTYPE_RESIZED);
                 }
@@ -10949,12 +10942,11 @@ SOKOL_API_IMPL const void* sapp_d3d11_get_render_target_view_window(sapp_window 
 #if defined(SOKOL_D3D11)
     _sapp_window* win = _sapp_lookup_window(window);
     if (win) {
-        _sapp_win32_window* win32_window = &win->win32;
-        if (win32_window->d3d11_resources.msaa_rtv) {
-            return win32_window->d3d11_resources.msaa_rtv;
+        if (win->win32.d3d11_resources.msaa_rtv) {
+            return win->win32.d3d11_resources.msaa_rtv;
         }
         else {
-            return win32_window->d3d11_resources.rtv;
+            return win->win32.d3d11_resources.rtv;
         }
     }
 #endif
@@ -10970,8 +10962,7 @@ SOKOL_API_IMPL const void* sapp_d3d11_get_depth_stencil_view_window(sapp_window 
 #if defined(SOKOL_D3D11)
     _sapp_window* win = _sapp_lookup_window(window);
     if (win) {
-        _sapp_win32_window* win32_window = &win->win32;
-        return win32_window->d3d11_resources.dsv;
+        return win->win32.d3d11_resources.dsv;
     }
 #endif
     return 0;
@@ -10986,8 +10977,7 @@ SOKOL_API_IMPL const void* sapp_win32_get_hwnd_window(sapp_window window) {
 #if defined(_SAPP_WIN32)
     _sapp_window* win = _sapp_lookup_window(window);
     if (win) {
-        _sapp_win32_window* win32_window = &win->win32;
-        return win32_window->hwnd;
+        return win->win32.hwnd;
     }
     return 0;
 #else
