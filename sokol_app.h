@@ -2721,7 +2721,7 @@ _SOKOL_PRIVATE _sapp_window_t* _sapp_windows_next(_sapp_window_iterator* iter) {
 }
 
 /* NB: replace with 'proper' handle allocation scheme */
-_SOKOL_PRIVATE sapp_window _sapp_alloc_window(void) {
+_SOKOL_PRIVATE sapp_window _sapp_window_alloc(void) {
     sapp_window res = { 0 };
     if (_sapp.window_pool.size != _sapp.window_pool.capacity) {
         for (int i = 0; i < _sapp.window_pool.capacity; ++i) {
@@ -2739,7 +2739,7 @@ _SOKOL_PRIVATE sapp_window _sapp_alloc_window(void) {
     return res;
 }
 
-_SOKOL_PRIVATE _sapp_window_t* _sapp_lookup_window(sapp_window handle) {
+_SOKOL_PRIVATE _sapp_window_t* _sapp_window_lookup(sapp_window handle) {
     int idx = handle.id & 0x7fffffff;
     if (_sapp.window_pool.capacity > idx) {
         _sapp_window_t* window = _sapp.window_pool.windows + idx;
@@ -2750,7 +2750,7 @@ _SOKOL_PRIVATE _sapp_window_t* _sapp_lookup_window(sapp_window handle) {
 }
 
 _SOKOL_PRIVATE int _sapp_window_dealloc(sapp_window handle) {
-     _sapp_window_t* window = _sapp_lookup_window(handle);
+     _sapp_window_t* window = _sapp_window_lookup(handle);
      if (window) {
          window->window_id.id &= 0x7fffffff;
          _sapp.window_pool.size--;
@@ -2760,7 +2760,7 @@ _SOKOL_PRIVATE int _sapp_window_dealloc(sapp_window handle) {
 
 _SOKOL_PRIVATE _sapp_window_t* _sapp_window_init(sapp_window window_id, const sapp_window_desc* desc){
     SOKOL_ASSERT(window_id.id != 0 && desc);
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
 
     window->window_width = desc->width;
     window->window_height = desc->height;
@@ -6094,7 +6094,7 @@ _SOKOL_PRIVATE void _sapp_win32_files_dropped(_sapp_window_t* window, HDROP hdro
 
 _SOKOL_PRIVATE LRESULT CALLBACK _sapp_win32_wndproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     sapp_window window_id = { (uint32_t)(uintptr_t)GetPropA(hWnd, _SAPP_WINDOW_PROP) };
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     if (window && !window->win32.in_create_window) {
         switch (uMsg) {
             case WM_CLOSE:
@@ -6319,7 +6319,7 @@ _SOKOL_PRIVATE void _sapp_win32_create_window(_sapp_window_t* window, const sapp
     const int wdc_height = rect.bottom - rect.top;
 
     window->win32.in_create_window = true;
-    _sapp_window_t* parent = _sapp_lookup_window(desc->parent_window);
+    _sapp_window_t* parent = _sapp_window_lookup(desc->parent_window);
     window->win32.hwnd = CreateWindowExW(
         win_ex_style,               /* dwExStyle */
         L"SOKOLAPP",                /* lpClassName */
@@ -6345,7 +6345,7 @@ _SOKOL_PRIVATE void _sapp_win32_create_window(_sapp_window_t* window, const sapp
 
 SOKOL_API_IMPL void sapp_window_destroy(sapp_window window_id){
     SOKOL_ASSERT(window_id.id != 0);
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
 
     // Destroy context
@@ -6579,7 +6579,7 @@ _SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
                 window = _sapp_windows_next(&present_iter);
             }
 
-            _sapp_window_t* main_window = _sapp_lookup_window(sapp_window_main());
+            _sapp_window_t* main_window = _sapp_window_lookup(sapp_window_main());
             if (main_window && IsIconic(main_window->win32.hwnd)) {
                 //TODO: ikrimae: #TpLib-sokol: Fix monitor refresh rate setting & sleeping
                 Sleep(16 * main_window->swap_interval);
@@ -6609,7 +6609,7 @@ _SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
         }
 
         if (_sapp.quit_requested) {
-            PostMessage(_sapp_lookup_window(sapp_window_main())->win32.hwnd, WM_CLOSE, 0, 0); /* NB: sends to main window */
+            PostMessage(_sapp_window_lookup(sapp_window_main())->win32.hwnd, WM_CLOSE, 0, 0); /* NB: sends to main window */
         }
     }
     _sapp_call_cleanup();
@@ -10500,7 +10500,7 @@ SOKOL_API_IMPL sapp_window sapp_window_main(void) {
 SOKOL_APP_API_DECL sapp_window sapp_window_create(const sapp_window_desc *desc) {
     SOKOL_ASSERT(desc);
     sapp_window_desc desc_def = _sapp_window_desc_defaults(desc);
-    sapp_window window_id = _sapp_alloc_window();
+    sapp_window window_id = _sapp_window_alloc();
     if(window_id.id != 0){
         _sapp_window_t* window = _sapp_window_init(window_id, &desc_def);
 
@@ -10536,11 +10536,11 @@ SOKOL_APP_API_DECL int sapp_window_index(sapp_window window) {
 }
 
 SOKOL_APP_API_DECL bool sapp_window_isvalid(sapp_window window) {
-    return _sapp_lookup_window(window) != 0;
+    return _sapp_window_lookup(window) != 0;
 }
 
 SOKOL_APP_API_DECL int sapp_window_request_destroy(sapp_window window) {
-    _sapp_window_t* win = _sapp_lookup_window(window);
+    _sapp_window_t* win = _sapp_window_lookup(window);
     if (win) {
         /* probably best if platforms handle this in the 'main'-loop
          * how to handle 'sapp_window_request_destroy(sapp_window_main())' ?
@@ -10575,13 +10575,13 @@ SOKOL_API_IMPL uint64_t sapp_frame_count(void) {
 }
 
 SOKOL_APP_API_DECL int sapp_window_width(sapp_window window) {
-    _sapp_window_t* win = _sapp_lookup_window(window);
+    _sapp_window_t* win = _sapp_window_lookup(window);
     int framebuffer_width = win ? win->framebuffer_width : 0;
     return (framebuffer_width > 0) ? framebuffer_width : 1;
 }
 
 SOKOL_APP_API_DECL int sapp_window_height(sapp_window window) {
-    _sapp_window_t* win = _sapp_lookup_window(window);
+    _sapp_window_t* win = _sapp_window_lookup(window);
     int framebuffer_height = win ? win->framebuffer_height : 0;
     return (framebuffer_height > 0) ? framebuffer_height : 1;
 }
@@ -10618,14 +10618,14 @@ SOKOL_API_IMPL int sapp_sample_count(void) {
 
 SOKOL_API_IMPL int sapp_window_sample_count(sapp_window window_id) {
     SOKOL_ASSERT(window_id.id != 0);
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
     return window->sample_count;
 }
 
 SOKOL_API_IMPL int sapp_swap_interval(sapp_window window_id) {
     SOKOL_ASSERT(window_id.id != 0);
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
     return window->swap_interval;
 }
@@ -10667,7 +10667,7 @@ SOKOL_APP_API_DECL bool sapp_is_fullscreen(void) {
 }
 
 SOKOL_API_IMPL bool sapp_window_is_fullscreen(sapp_window window_id) {
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
     return window->fullscreen;
 }
@@ -10677,7 +10677,7 @@ SOKOL_APP_API_DECL void sapp_toggle_fullscreen(void) {
 }
 
 SOKOL_API_IMPL void sapp_window_toggle_fullscreen(sapp_window window_id) {
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
 
     #if defined(_SAPP_MACOS)
@@ -10694,7 +10694,7 @@ SOKOL_API_IMPL void sapp_window_toggle_fullscreen(sapp_window window_id) {
 }
 
 SOKOL_API_IMPL void sapp_window_show_mouse(sapp_window window_id, bool show) {
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
 
     if (window->mouse.shown != show) {
@@ -10717,7 +10717,7 @@ SOKOL_API_IMPL void sapp_show_mouse(bool show) {
 }
 
 SOKOL_API_IMPL bool sapp_window_mouse_shown(sapp_window window_id) {
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
 
     return window->mouse.shown;
@@ -10732,7 +10732,7 @@ SOKOL_API_IMPL void sapp_lock_mouse(bool lock) {
 }
 
 SOKOL_API_IMPL void sapp_window_lock_mouse(sapp_window window_id, bool lock) {
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
 
     #if defined(_SAPP_MACOS)
@@ -10755,7 +10755,7 @@ SOKOL_API_IMPL bool sapp_mouse_locked(void) {
 }
 
 SOKOL_API_IMPL bool sapp_window_mouse_locked(sapp_window window_id) {
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
 
     return window->mouse.locked;
@@ -10779,7 +10779,7 @@ SOKOL_API_IMPL void sapp_consume_event(void) {
 
 /* NOTE: on HTML5, sapp_set_clipboard_string() must be called from within event handler! */
 SOKOL_API_IMPL void sapp_window_set_clipboard_string(sapp_window window_id, const char* str) {
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
     SOKOL_ASSERT(window->clipboard.enabled);
     if (!window->clipboard.enabled) {
@@ -10803,7 +10803,7 @@ SOKOL_API_IMPL void sapp_set_clipboard_string(const char* str) {
 }
 
 SOKOL_API_IMPL const char* sapp_window_get_clipboard_string(sapp_window window_id) {
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
     SOKOL_ASSERT(window->clipboard.enabled);
     if (!window->clipboard.enabled) {
@@ -10831,7 +10831,7 @@ SOKOL_API_IMPL void sapp_set_window_title(const char* title) {
 
 SOKOL_API_IMPL void sapp_window_set_window_title(sapp_window window_id, const char* title) {
     SOKOL_ASSERT(title);
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
 
     _sapp_strcpy(title, window->window_title, sizeof(window->window_title));
@@ -10845,7 +10845,7 @@ SOKOL_API_IMPL void sapp_window_set_window_title(sapp_window window_id, const ch
 }
 
 SOKOL_API_IMPL int sapp_window_get_num_dropped_files(sapp_window window_id) {
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
     SOKOL_ASSERT(window->drop.enabled);
     return window->drop.num_files;
@@ -10860,7 +10860,7 @@ SOKOL_API_IMPL const char* sapp_get_dropped_file_path(int index) {
 }
 
 SOKOL_API_IMPL const char* sapp_window_get_dropped_file_path(sapp_window window_id, int index) {
-    _sapp_window_t* window = _sapp_lookup_window(window_id);
+    _sapp_window_t* window = _sapp_window_lookup(window_id);
     SOKOL_ASSERT(window);
     SOKOL_ASSERT(window->drop.enabled);
     SOKOL_ASSERT((index >= 0) && (index < window->drop.num_files));
@@ -11011,7 +11011,7 @@ SOKOL_API_IMPL const void* sapp_d3d11_get_device_context(void) {
 SOKOL_API_IMPL const void* sapp_d3d11_window_get_render_target_view(sapp_window window) {
     SOKOL_ASSERT(_sapp.valid);
 #if defined(SOKOL_D3D11)
-    _sapp_window_t* win = _sapp_lookup_window(window);
+    _sapp_window_t* win = _sapp_window_lookup(window);
     if (win) {
         if (win->d3d11.msaa_rtv) {
             return win->d3d11.msaa_rtv;
@@ -11031,7 +11031,7 @@ SOKOL_API_IMPL const void* sapp_d3d11_get_render_target_view(void) {
 SOKOL_API_IMPL const void* sapp_d3d11_window_get_depth_stencil_view(sapp_window window) {
     SOKOL_ASSERT(_sapp.valid);
 #if defined(SOKOL_D3D11)
-    _sapp_window_t* win = _sapp_lookup_window(window);
+    _sapp_window_t* win = _sapp_window_lookup(window);
     if (win) {
         return win->d3d11.dsv;
     }
@@ -11046,7 +11046,7 @@ SOKOL_API_IMPL const void* sapp_d3d11_get_depth_stencil_view(void) {
 SOKOL_API_IMPL const void* sapp_win32_window_get_hwnd(sapp_window window) {
     SOKOL_ASSERT(_sapp.valid);
 #if defined(_SAPP_WIN32)
-    _sapp_window_t* win = _sapp_lookup_window(window);
+    _sapp_window_t* win = _sapp_window_lookup(window);
     if (win) {
         return win->win32.hwnd;
     }
