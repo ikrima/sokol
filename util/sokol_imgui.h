@@ -1418,7 +1418,7 @@ SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
         case SAPP_EVENTTYPE_MOUSE_DOWN: {
             //bool is_any_mouse_down = false; for(bool btn : _simgui.btn_down) { is_any_mouse_down |= btn; }
             //if (!is_any_mouse_down && ::GetCapture() == NULL) {
-            //    ::SetCapture((HWND)sapp_win32_get_hwnd_window(ev->window));
+            //    ::SetCapture((HWND)sapp_win32_window_get_hwnd(ev->window));
             //}
             io->MousePos.x = ev->mouse_x / dpi_scale;
             io->MousePos.y = ev->mouse_y / dpi_scale;
@@ -1429,7 +1429,7 @@ SOKOL_API_IMPL bool simgui_handle_event(const sapp_event* ev) {
         }
         case SAPP_EVENTTYPE_MOUSE_UP: {
             //bool is_any_mouse_down = false; for (bool btn : _simgui.btn_down) { is_any_mouse_down |= btn; }
-            //if (!is_any_mouse_down && ::GetCapture() == (HWND)sapp_win32_get_hwnd_window(ev->window)) {
+            //if (!is_any_mouse_down && ::GetCapture() == (HWND)sapp_win32_window_get_hwnd(ev->window)) {
             //    ::ReleaseCapture();
             //}
             io->MousePos.x = ev->mouse_x / dpi_scale;
