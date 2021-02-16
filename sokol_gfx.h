@@ -8319,65 +8319,63 @@ _SOKOL_PRIVATE sg_resource_state _sg_d3d11_create_pass(_sg_pass_t* pass, _sg_ima
         const sg_attachment_desc* att_desc = &desc->color_attachments[i];
         _SOKOL_UNUSED(att_desc);
         SOKOL_ASSERT(att_desc->image.id != SG_INVALID_ID);
-        _SOKOL_UNUSED(att_desc);
         _sg_image_t* att_img = att_images[i];
         SOKOL_ASSERT(att_img && (att_img->slot.id == att_desc->image.id));
         SOKOL_ASSERT(_sg_is_valid_rendertarget_color_format(att_img->cmn.pixel_format));
         SOKOL_ASSERT(0 == pass->d3d11.color_atts[i].image);
         pass->d3d11.color_atts[i].image = att_img;
 
-            /* create D3D11 render-target-view */
+        /* create D3D11 render-target-view */
         const _sg_attachment_t* cmn_att = &pass->cmn.color_atts[i];
         SOKOL_ASSERT(0 == pass->d3d11.color_atts[i].rtv);
-            ID3D11Resource* d3d11_res = 0;
+        ID3D11Resource* d3d11_res = 0;
         const bool is_msaa = att_img->cmn.sample_count > 1;
-            D3D11_RENDER_TARGET_VIEW_DESC d3d11_rtv_desc;
-            memset(&d3d11_rtv_desc, 0, sizeof(d3d11_rtv_desc));
+        D3D11_RENDER_TARGET_VIEW_DESC d3d11_rtv_desc;
+        memset(&d3d11_rtv_desc, 0, sizeof(d3d11_rtv_desc));
         d3d11_rtv_desc.Format = att_img->d3d11.format;
         if ((att_img->cmn.type == SG_IMAGETYPE_2D) || is_msaa) {
-                if (is_msaa) {
+            if (is_msaa) {
                 d3d11_res = (ID3D11Resource*) att_img->d3d11.texmsaa;
-                    d3d11_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DMS;
-                }
-                else {
-                d3d11_res = (ID3D11Resource*) att_img->d3d11.tex2d;
-                    d3d11_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-                d3d11_rtv_desc.Texture2D.MipSlice = cmn_att->mip_level;
-                }
-            }
-        else if ((att_img->cmn.type == SG_IMAGETYPE_CUBE) || (att_img->cmn.type == SG_IMAGETYPE_ARRAY)) {
-            d3d11_res = (ID3D11Resource*) att_img->d3d11.tex2d;
-                d3d11_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
-            d3d11_rtv_desc.Texture2DArray.MipSlice = cmn_att->mip_level;
-            d3d11_rtv_desc.Texture2DArray.FirstArraySlice = cmn_att->slice;
-                d3d11_rtv_desc.Texture2DArray.ArraySize = 1;
+                d3d11_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DMS;
             }
             else {
+                d3d11_res = (ID3D11Resource*) att_img->d3d11.tex2d;
+                d3d11_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+                d3d11_rtv_desc.Texture2D.MipSlice = cmn_att->mip_level;
+            }
+        }
+        else if ((att_img->cmn.type == SG_IMAGETYPE_CUBE) || (att_img->cmn.type == SG_IMAGETYPE_ARRAY)) {
+            d3d11_res = (ID3D11Resource*) att_img->d3d11.tex2d;
+            d3d11_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+            d3d11_rtv_desc.Texture2DArray.MipSlice = cmn_att->mip_level;
+            d3d11_rtv_desc.Texture2DArray.FirstArraySlice = cmn_att->slice;
+            d3d11_rtv_desc.Texture2DArray.ArraySize = 1;
+        }
+        else {
             SOKOL_ASSERT(att_img->cmn.type == SG_IMAGETYPE_3D);
             d3d11_res = (ID3D11Resource*) att_img->d3d11.tex3d;
-                d3d11_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE3D;
+            d3d11_rtv_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE3D;
             d3d11_rtv_desc.Texture3D.MipSlice = cmn_att->mip_level;
             d3d11_rtv_desc.Texture3D.FirstWSlice = cmn_att->slice;
-                d3d11_rtv_desc.Texture3D.WSize = 1;
-            }
-            SOKOL_ASSERT(d3d11_res);
-        HRESULT hr = _sg_d3d11_CreateRenderTargetView(_sg.d3d11.dev, d3d11_res, &d3d11_rtv_desc, &pass->d3d11.color_atts[i].rtv);
-            _SOKOL_UNUSED(hr);
-        SOKOL_ASSERT(SUCCEEDED(hr) && pass->d3d11.color_atts[i].rtv);
+            d3d11_rtv_desc.Texture3D.WSize = 1;
         }
+        SOKOL_ASSERT(d3d11_res);
+        HRESULT hr = _sg_d3d11_CreateRenderTargetView(_sg.d3d11.dev, d3d11_res, &d3d11_rtv_desc, &pass->d3d11.color_atts[i].rtv);
+        _SOKOL_UNUSED(hr);
+        SOKOL_ASSERT(SUCCEEDED(hr) && pass->d3d11.color_atts[i].rtv);
+    }
 
     /* optional depth-stencil image */
     SOKOL_ASSERT(0 == pass->d3d11.ds_att.image);
     SOKOL_ASSERT(0 == pass->d3d11.ds_att.dsv);
     if (desc->depth_stencil_attachment.image.id != SG_INVALID_ID) {
-    const int ds_img_index = SG_MAX_COLOR_ATTACHMENTS;
+        const int ds_img_index = SG_MAX_COLOR_ATTACHMENTS;
         const sg_attachment_desc* att_desc = &desc->depth_stencil_attachment;
         _SOKOL_UNUSED(att_desc);
         _sg_image_t* att_img = att_images[ds_img_index];
         SOKOL_ASSERT(att_img && (att_img->slot.id == att_desc->image.id));
         SOKOL_ASSERT(_sg_is_valid_rendertarget_depth_format(att_img->cmn.pixel_format));
         SOKOL_ASSERT(0 == pass->d3d11.ds_att.image);
-        _SOKOL_UNUSED(att_desc);
         pass->d3d11.ds_att.image = att_img;
 
         /* create D3D11 depth-stencil-view */
