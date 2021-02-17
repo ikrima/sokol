@@ -149,7 +149,7 @@ SOKOL_API_IMPL sg_context_desc sapp_sgcontext_window(sapp_window window) {
 }
 
 SOKOL_API_IMPL sg_context_desc sapp_sgcontext(void) {
-    return sapp_sgcontext_window(sapp_window_main());
+    return sapp_sgcontext_window(SOKOL_APP_WINDOW_MAIN_ID());
 }
 #endif
 

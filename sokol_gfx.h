@@ -2208,7 +2208,6 @@ typedef struct sg_desc {
 
 
 /* setup and misc functions */
-/* returns the default context (keep ?) */
 SOKOL_GFX_API_DECL sg_context sg_setup(const sg_desc* desc);
 SOKOL_GFX_API_DECL void sg_shutdown(void);
 SOKOL_GFX_API_DECL bool sg_isvalid(void);
