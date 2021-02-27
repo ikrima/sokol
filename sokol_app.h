@@ -5437,10 +5437,30 @@ static inline HRESULT _sapp_dxgi_Present(IDXGISwapChain* self, UINT SyncInterval
     #endif
 }
 
+_SOKOL_PRIVATE bool _sapp_d3d11_sdk_layers_available(void) {
+#if defined(SOKOL_DEBUG)
+    HRESULT hr = D3D11CreateDevice(
+        nullptr,
+        D3D_DRIVER_TYPE_NULL, // There is no need to create a real hardware device.
+        0,
+        D3D11_CREATE_DEVICE_DEBUG, // Check for the SDK layers.
+        nullptr,                   // Any feature level will do.
+        0,
+        D3D11_SDK_VERSION, // Always set this to D3D11_SDK_VERSION for Windows Store apps.
+        nullptr,           // No need to keep the D3D device reference.
+        nullptr,           // No need to know the feature level.
+        nullptr            // No need to keep the D3D device context reference.
+    );
+    return SUCCEEDED(hr);
+#else
+    return false;
+#endif
+}
+
 _SOKOL_PRIVATE void _sapp_d3d11_create_device(void) {
     int create_flags = D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 #if defined(SOKOL_DEBUG)
-    create_flags |= D3D11_CREATE_DEVICE_DEBUG;
+    create_flags |= _sapp_d3d11_sdk_layers_available() ? D3D11_CREATE_DEVICE_DEBUG : 0;
 #endif
     D3D_FEATURE_LEVEL feature_level;
 
