@@ -1168,18 +1168,18 @@ typedef struct sapp_desc {
 
     int         width;                          /* the preferred width of the window / canvas */
     int         height;                         /* the preferred height of the window / canvas */
-    int sample_count;                   /* MSAA sample count */
-    int swap_interval;                  /* the preferred swap interval (ignored on some platforms). -1 => disable vsync */
-    bool high_dpi;                      /* whether the rendering canvas is full-resolution on HighDPI displays */
-    bool fullscreen;                    /* whether the window should be created in fullscreen mode */
-    bool alpha;                         /* whether the framebuffer should have an alpha channel (ignored on some platforms) */
-    const char* window_title;           /* the window title as UTF-8 encoded string */
-    bool user_cursor;                   /* if true, user is expected to manage cursor image in SAPP_EVENTTYPE_UPDATE_CURSOR */
-    bool enable_clipboard;              /* enable clipboard access, default is false */
-    int clipboard_size;                 /* max size of clipboard content in bytes */
-    bool enable_dragndrop;              /* enable file dropping (drag'n'drop), default is false */
-    int max_dropped_files;              /* max number of dropped files to process (default: 1) */
-    int max_dropped_file_path_length;   /* max length in bytes of a dropped UTF-8 file path (default: 2048) */
+    int         sample_count;                   /* MSAA sample count */
+    int         swap_interval;                  /* the preferred swap interval (ignored on some platforms). -1 => disable vsync */
+    bool        high_dpi;                       /* whether the rendering canvas is full-resolution on HighDPI displays */
+    bool        fullscreen;                     /* whether the window should be created in fullscreen mode */
+    bool        alpha;                          /* whether the framebuffer should have an alpha channel (ignored on some platforms) */
+    const char* window_title;             /* the window title as UTF-8 encoded string */
+    bool        user_cursor;                    /* if true, user is expected to manage cursor image in SAPP_EVENTTYPE_UPDATE_CURSOR */
+    bool        enable_clipboard;               /* enable clipboard access, default is false */
+    int         clipboard_size;                 /* max size of clipboard content in bytes */
+    bool        enable_dragndrop;               /* enable file dropping (drag'n'drop), default is false */
+    int         max_dropped_files;              /* max number of dropped files to process (default: 1) */
+    int         max_dropped_file_path_length;   /* max length in bytes of a dropped UTF-8 file path (default: 2048) */
 
     /* backend-specific options */
     bool gl_force_gles2;                /* if true, setup GLES2/WebGL even if GLES3/WebGL2 is available */
@@ -2712,7 +2712,7 @@ _SOKOL_PRIVATE sapp_window_desc _sapp_window_desc_defaults(const sapp_window_des
 #if defined(_SAPP_WIN32)
     desc.win32.dwStyle  = _sapp_def(desc.win32.dwStyle, WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX);
     desc.win32.dwExStyle = _sapp_def(desc.win32.dwExStyle, WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
-    #endif
+#endif
     return desc;
 }
 
@@ -5609,6 +5609,8 @@ _SOKOL_PRIVATE void _sapp_d3d11_create_swapchain(_sapp_window_t* window) {
         sc_desc->BufferCount = 1;
         sc_desc->SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
     }
+    //TODO: ikrimae: #TpLib-sokol: Hack just using win10 detection instead of IDXGIFactory5::CheckFeatureSupport
+    sc_desc->Flags = (_sapp.win32.is_win10_or_greater && window->swap_interval == 0) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
     sc_desc->SampleDesc.Count = 1;
     sc_desc->SampleDesc.Quality = 0;
     sc_desc->BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -5693,7 +5695,8 @@ _SOKOL_PRIVATE void _sapp_d3d11_destroy_default_render_target(_sapp_window_t* wi
 _SOKOL_PRIVATE void _sapp_d3d11_resize_default_render_target(_sapp_window_t* window) {
     if (window->d3d11.swap_chain) {
         _sapp_d3d11_destroy_default_render_target(window);
-        _sapp_dxgi_ResizeBuffers(window->d3d11.swap_chain, window->d3d11.swap_chain_desc.BufferCount, (UINT)window->framebuffer_width, (UINT)window->framebuffer_height, DXGI_FORMAT_B8G8R8A8_UNORM, 0);
+        const UINT sc_flags = (_sapp.win32.is_win10_or_greater && window->swap_interval == 0) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+        _sapp_dxgi_ResizeBuffers(window->d3d11.swap_chain, window->d3d11.swap_chain_desc.BufferCount, (UINT)window->framebuffer_width, (UINT)window->framebuffer_height, DXGI_FORMAT_B8G8R8A8_UNORM, sc_flags);
         _sapp_d3d11_create_default_render_target(window);
     }
 }
@@ -5705,7 +5708,8 @@ _SOKOL_PRIVATE void _sapp_d3d11_present(_sapp_window_t* window) {
         SOKOL_ASSERT(window->d3d11.msaa_rt);
         _sapp_d3d11_ResolveSubresource(_sapp.d3d11.device_context, (ID3D11Resource*)window->d3d11.rt, 0, (ID3D11Resource*)window->d3d11.msaa_rt, 0, DXGI_FORMAT_B8G8R8A8_UNORM);
     }
-    _sapp_dxgi_Present(window->d3d11.swap_chain, (UINT)window->swap_interval, 0);
+    const UINT present_flags = (_sapp.win32.is_win10_or_greater && window->swap_interval == 0) ? DXGI_PRESENT_ALLOW_TEARING : 0;
+    _sapp_dxgi_Present(window->d3d11.swap_chain, (UINT)window->swap_interval, present_flags);
 }
 
 #endif /* SOKOL_D3D11 */
@@ -6064,8 +6068,8 @@ _SOKOL_PRIVATE void _sapp_win32_lock_mouse(_sapp_window_t* window, bool lock) {
 
         /* enable raw input for mouse, starts sending WM_INPUT messages to WinProc (see GLFW) */
         const RAWINPUTDEVICE rid = {
-            0x01,   // usUsagePage: HID_USAGE_PAGE_GENERIC
-            0x02,   // usUsage: HID_USAGE_GENERIC_MOUSE
+            0x01,                   // usUsagePage: HID_USAGE_PAGE_GENERIC
+            0x02,                   // usUsage: HID_USAGE_GENERIC_MOUSE
             0,                      // dwFlags
             window->win32.hwnd      // hwndTarget
         };
@@ -6453,10 +6457,10 @@ _SOKOL_PRIVATE void _sapp_win32_create_window(_sapp_window_t* window, const sapp
     window->win32.hwnd = CreateWindowExW(
         win_ex_style,               /* dwExStyle */
         L"SOKOLAPP",                /* lpClassName */
-            window->window_title_wide,  /* lpWindowName */
-            win_style,                  /* dwStyle */
-            wdc_left,                   /* X */
-            wdc_top,                    /* Y */
+        window->window_title_wide,  /* lpWindowName */
+        win_style,                  /* dwStyle */
+        wdc_left,                   /* X */
+        wdc_top,                    /* Y */
         wdc_width ,                 /* nWidth */
         wdc_height ,                /* nHeight */
         parent ? parent->win32.hwnd : NULL, /* hWndParent */
