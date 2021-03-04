@@ -828,6 +828,36 @@
 
     NOTE: SOKOL_NO_ENTRY is currently not supported on Android.
 
+    WINDOWS CONSOLE OUTPUT
+    ======================
+    On Windows, regular windowed applications don't show any stdout/stderr text
+    output, which can be a bit of a hassle for printf() debugging or generally
+    logging text to the console. Also, console output by default uses a local
+    codepage setting and thus international UTF-8 encoded text is printed
+    as garbage.
+
+    To help with these issues, sokol_app.h can be configured at startup
+    via the following Windows-specific sapp_desc flags:
+
+        sapp_desc.win32_console_utf8 (default: false)
+            When set to true, the output console codepage will be switched
+            to UTF-8 (and restored to the original codepage on exit)
+
+        sapp_desc.win32_console_attach (default: false)
+            When set to true, stdout and stderr will be attached to the
+            console of the parent process (if the parent process actually
+            has a console). This means that if the application was started
+            in a command line window, stdout and stderr output will be printed
+            to the terminal, just like a regular command line program. But if
+            the application is started via double-click, it will behave like
+            a regular UI application, and stdout/stderr will not be visible.
+
+        sapp_desc.win32_console_create (default: false)
+            When set to true, a new console window will be created and
+            stdout/stderr will be redirected to that console window. It
+            doesn't matter if the application is started from the command
+            line or via double-click.
+
     TEMP NOTE DUMP
     ==============
     - onscreen keyboard support on Android requires Java :(, should we even bother?
@@ -1151,13 +1181,17 @@ typedef struct sapp_desc {
     int max_dropped_files;              /* max number of dropped files to process (default: 1) */
     int max_dropped_file_path_length;   /* max length in bytes of a dropped UTF-8 file path (default: 2048) */
 
+    /* backend-specific options */
+    bool gl_force_gles2;                /* if true, setup GLES2/WebGL even if GLES3/WebGL2 is available */
+    bool win32_console_utf8;            /* if true, set the output console codepage to UTF-8 */
+    bool win32_console_create;          /* if true, attach stdout/stderr to a new console window */
+    bool win32_console_attach;          /* if true, attach stdout/stderr to parent process */
     const char* html5_canvas_name;      /* the name (id) of the HTML5 canvas element, default is "canvas" */
     bool html5_canvas_resize;           /* if true, the HTML5 canvas size is set to sapp_desc.width/height, otherwise canvas size is tracked */
     bool html5_preserve_drawing_buffer; /* HTML5 only: whether to preserve default framebuffer content between frames */
     bool html5_premultiplied_alpha;     /* HTML5 only: whether the rendered pixels use premultiplied alpha convention */
     bool html5_ask_leave_site;          /* initial state of the internal html5_ask_leave_site flag (see sapp_html5_ask_leave_site()) */
     bool ios_keyboard_resizes_canvas;   /* if true, showing the iOS keyboard shrinks the canvas */
-    bool gl_force_gles2;                /* if true, setup GLES2/WebGL even if GLES3/WebGL2 is available */
 
     int window_pool_size;                    /* default: 1 (main) */
     sapp_window_desc window;
@@ -1535,6 +1569,7 @@ inline sapp_window sapp_window_create(const sapp_window_desc& desc) { return sap
         #pragma warning(disable:4055)   /* 'type cast': from data pointer */
         #pragma warning(disable:4505)   /* unreferenced local function has been removed */
         #pragma warning(disable:4115)   /* /W4: 'ID3D11ModuleInstance': named type definition in parentheses (in d3d11.h) */
+        #pragma warning(disable:4996)   /* 'freopen': This function or variable may be unsafe. */
     #endif
     #ifndef WIN32_LEAN_AND_MEAN
         #define WIN32_LEAN_AND_MEAN
@@ -1545,9 +1580,14 @@ inline sapp_window sapp_window_create(const sapp_window_desc& desc) { return sap
     #include <windows.h>
     #include <windowsx.h>
     #include <shellapi.h>
-    #if !defined(SOKOL_WIN32_FORCE_MAIN) && !defined(SOKOL_NO_ENTRY)
-        #pragma comment (linker, "/subsystem:windows")
+    #if !defined(SOKOL_NO_ENTRY)    // if SOKOL_NO_ENTRY is defined, it's the applications' responsibility to use the right subsystem
+        #if defined(SOKOL_WIN32_FORCE_MAIN)
+            #pragma comment (linker, "/subsystem:console")
+        #else
+            #pragma comment (linker, "/subsystem:windows")
+        #endif
     #endif
+    #include <stdio.h>  /* freopen() */
 
     #pragma comment (lib, "kernel32")
     #pragma comment (lib, "user32")
@@ -1780,6 +1820,7 @@ typedef struct {
 } _sapp_win32_dpi_t;
 
 typedef struct {
+    UINT orig_codepage;
     bool is_win10_or_greater;
     uint8_t mouse_capture_mask;
     _sapp_win32_dpi_t dpi;
@@ -6418,6 +6459,32 @@ SOKOL_API_IMPL void sapp_window_destroy(sapp_window window_id){
     _sapp_window_dealloc(window_id);
 }
 
+_SOKOL_PRIVATE void _sapp_win32_init_console(void) {
+    if (_sapp.desc.win32_console_create || _sapp.desc.win32_console_attach) {
+        BOOL con_valid = FALSE;
+        if (_sapp.desc.win32_console_create) {
+            con_valid = AllocConsole();
+        }
+        else if (_sapp.desc.win32_console_attach) {
+            con_valid = AttachConsole(ATTACH_PARENT_PROCESS);
+        }
+        if (con_valid) {
+            freopen("CON", "w", stdout);
+            freopen("CON", "w", stderr);
+        }
+    }
+    if (_sapp.desc.win32_console_utf8) {
+        _sapp.win32.orig_codepage = GetConsoleOutputCP();
+        SetConsoleOutputCP(CP_UTF8);
+    }
+}
+
+_SOKOL_PRIVATE void _sapp_win32_restore_console(void) {
+    if (_sapp.desc.win32_console_utf8) {
+        SetConsoleOutputCP(_sapp.win32.orig_codepage);
+    }
+}
+
 _SOKOL_PRIVATE void _sapp_win32_init_dpi(void) {
 
     typedef BOOL(WINAPI * SETPROCESSDPIAWARE_T)(void);
@@ -6568,6 +6635,7 @@ _SOKOL_PRIVATE bool _sapp_win32_is_win10_or_greater(void) {
 
 _SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
     _sapp_init_state(desc);
+    _sapp_win32_init_console();
     _sapp.win32.is_win10_or_greater = _sapp_win32_is_win10_or_greater();
     _sapp_win32_uwp_init_keytable();
     _sapp_win32_init_dpi();
@@ -6666,6 +6734,7 @@ _SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
     #endif
 
     UnregisterClassW(L"SOKOLAPP", GetModuleHandleW(NULL));
+    _sapp_win32_restore_console();
 
     _sapp_discard_state();
 }
@@ -6703,12 +6772,6 @@ _SOKOL_PRIVATE char** _sapp_win32_command_line_to_utf8_argv(LPWSTR w_command_lin
 #if !defined(SOKOL_NO_ENTRY)
 #if defined(SOKOL_WIN32_FORCE_MAIN)
 int main(int argc, char* argv[]) {
-    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
-        freopen("CON", "r", stdin);
-        freopen("CON", "w", stdout);
-        freopen("CON", "w", stderr);
-    }
-    SetConsoleOutputCP(CP_UTF8);
     sapp_desc desc = sokol_main(argc, argv);
     _sapp_win32_run(&desc);
     return 0;
@@ -6719,12 +6782,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     _SOKOL_UNUSED(hPrevInstance);
     _SOKOL_UNUSED(lpCmdLine);
     _SOKOL_UNUSED(nCmdShow);
-    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
-        freopen("CON", "r", stdin);
-        freopen("CON", "w", stdout);
-        freopen("CON", "w", stderr);
-    }
-    SetConsoleOutputCP(CP_UTF8);
     int argc_utf8 = 0;
     char** argv_utf8 = _sapp_win32_command_line_to_utf8_argv(GetCommandLineW(), &argc_utf8);
     sapp_desc desc = sokol_main(argc_utf8, argv_utf8);
