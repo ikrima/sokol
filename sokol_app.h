@@ -1359,10 +1359,12 @@ SOKOL_APP_API_DECL const void* sapp_d3d11_get_device_context(void);
 /* D3D11: get pointer to ID3D11RenderTargetView object */
 SOKOL_APP_API_DECL const void* sapp_d3d11_get_render_target_view(void);
 /* D3D11: get pointer to ID3D11RenderTargetView object */
+SOKOL_APP_API_DECL const void* sapp_d3d11_window_get_render_target(sapp_window window_id);
 SOKOL_APP_API_DECL const void* sapp_d3d11_window_get_render_target_view(sapp_window window_id);
 /* D3D11: get pointer to ID3D11DepthStencilView */
 SOKOL_APP_API_DECL const void* sapp_d3d11_get_depth_stencil_view(void);
 /* D3D11: get pointer to ID3D11DepthStencilView */
+SOKOL_APP_API_DECL const void* sapp_d3d11_window_get_depth_stencil(sapp_window window_id);
 SOKOL_APP_API_DECL const void* sapp_d3d11_window_get_depth_stencil_view(sapp_window window_id);
 /* Win32: get the HWND window handle of the main window */
 SOKOL_APP_API_DECL const void* sapp_win32_get_hwnd(void);
@@ -11168,6 +11170,22 @@ SOKOL_API_IMPL const void* sapp_d3d11_get_device_context(void) {
     #endif
 }
 
+SOKOL_API_IMPL const void* sapp_d3d11_window_get_render_target(sapp_window window) {
+    SOKOL_ASSERT(_sapp.valid);
+#if defined(SOKOL_D3D11)
+    _sapp_window_t* win = _sapp_window_lookup(window);
+    if (win) {
+        if (win->d3d11.msaa_rt) {
+            return win->d3d11.msaa_rt;
+        }
+        else {
+            return win->d3d11.rt;
+        }
+    }
+#endif
+    return 0;
+}
+
 SOKOL_API_IMPL const void* sapp_d3d11_window_get_render_target_view(sapp_window window) {
     SOKOL_ASSERT(_sapp.valid);
 #if defined(SOKOL_D3D11)
@@ -11186,6 +11204,18 @@ SOKOL_API_IMPL const void* sapp_d3d11_window_get_render_target_view(sapp_window 
 
 SOKOL_API_IMPL const void* sapp_d3d11_get_render_target_view(void) {
     return sapp_d3d11_window_get_render_target_view(SOKOL_APP_WINDOW_MAIN_ID());
+}
+
+
+SOKOL_API_IMPL const void* sapp_d3d11_window_get_depth_stencil(sapp_window window) {
+    SOKOL_ASSERT(_sapp.valid);
+#if defined(SOKOL_D3D11)
+    _sapp_window_t* win = _sapp_window_lookup(window);
+    if (win) {
+        return win->d3d11.ds;
+    }
+#endif
+    return 0;
 }
 
 SOKOL_API_IMPL const void* sapp_d3d11_window_get_depth_stencil_view(sapp_window window) {
