@@ -641,9 +641,10 @@ typedef struct sg_range {
     size_t size;
 } sg_range;
 
-// disabling this for every includer isn't great, but the warning is also quite pointless
+// disabling this for every includer isn't great, but the warnings are also quite pointless
 #if defined(_MSC_VER)
 #pragma warning(disable:4221)   /* /W4 only: nonstandard extension used: 'x': cannot be initialized using address of automatic variable 'y' */
+#pragma warning(disable:4202)   /* VS2015: nonstandard extension used: non-constant aggregate initializer */
 #endif
 #if defined(__cplusplus)
 #define SG_RANGE(x) sg_range{ &x, sizeof(x) }
@@ -2507,6 +2508,8 @@ inline int sg_append_buffer(sg_buffer buf_id, const sg_range& data) { return sg_
 #pragma warning(disable:4115)   /* named type definition in parentheses */
 #pragma warning(disable:4505)   /* unreferenced local function has been removed */
 #pragma warning(disable:4201)   /* nonstandard extension used: nameless struct/union (needed by d3d11.h) */
+#pragma warning(disable:4054)   /* 'type cast': from function pointer */
+#pragma warning(disable:4055)   /* 'type cast': from data pointer */
 #endif
 
 #if defined(SOKOL_GLCORE33) || defined(SOKOL_GLES2) || defined(SOKOL_GLES3)
