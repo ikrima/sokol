@@ -7887,11 +7887,16 @@ _SOKOL_PRIVATE sg_resource_state _sg_d3d11_create_image(_sg_image_t* img, const 
 
     /* special case depth-stencil buffer? */
     if (_sg_is_valid_rendertarget_depth_format(img->cmn.pixel_format)) {
-        /* create only a depth-texture */
-        SOKOL_ASSERT(!injected);
-        if (img->d3d11.format == DXGI_FORMAT_UNKNOWN) {
-            SOKOL_LOG("trying to create a D3D11 depth-texture with unsupported pixel format\n");
-            return SG_RESOURCESTATE_FAILED;
+        if (injected) {
+            SOKOL_ASSERT(desc->d3d11_texture && !desc->d3d11_shader_resource_view);
+            img->d3d11.texds = (ID3D11Texture2D*) desc->d3d11_texture;
+            _sg_d3d11_AddRef(img->d3d11.texds);
+        }
+        else {
+            /* create only a depth-texture */
+            if (img->d3d11.format == DXGI_FORMAT_UNKNOWN) {
+                SOKOL_LOG("trying to create a D3D11 depth-texture with unsupported pixel format\n");
+                return SG_RESOURCESTATE_FAILED;
         }
         D3D11_TEXTURE2D_DESC d3d11_desc;
         memset(&d3d11_desc, 0, sizeof(d3d11_desc));
@@ -7905,7 +7910,8 @@ _SOKOL_PRIVATE sg_resource_state _sg_d3d11_create_image(_sg_image_t* img, const 
         d3d11_desc.SampleDesc.Count = (UINT)img->cmn.sample_count;
         d3d11_desc.SampleDesc.Quality = (UINT) (msaa ? D3D11_STANDARD_MULTISAMPLE_PATTERN : 0);
         hr = _sg_d3d11_CreateTexture2D(_sg.d3d11.dev, &d3d11_desc, NULL, &img->d3d11.texds);
-        SOKOL_ASSERT(SUCCEEDED(hr) && img->d3d11.texds);
+            SOKOL_ASSERT(SUCCEEDED(hr) && img->d3d11.texds);
+        }
     }
     else {
         /* create (or inject) color texture and shader-resource-view */
@@ -7939,9 +7945,10 @@ _SOKOL_PRIVATE sg_resource_state _sg_d3d11_create_image(_sg_image_t* img, const 
                     _sg_d3d11_AddRef(img->d3d11.srv);
                 }
             }
+            else {
 
-            /* if not injected, create texture */
-            if (0 == img->d3d11.tex2d) {
+                /* if not injected, create texture */
+                if (0 == img->d3d11.tex2d) {
                 D3D11_TEXTURE2D_DESC d3d11_tex_desc;
                 memset(&d3d11_tex_desc, 0, sizeof(d3d11_tex_desc));
                 d3d11_tex_desc.Width = (UINT)img->cmn.width;
@@ -8002,6 +8009,7 @@ _SOKOL_PRIVATE sg_resource_state _sg_d3d11_create_image(_sg_image_t* img, const 
                 }
                 hr = _sg_d3d11_CreateShaderResourceView(_sg.d3d11.dev, (ID3D11Resource*)img->d3d11.tex2d, &d3d11_srv_desc, &img->d3d11.srv);
                 SOKOL_ASSERT(SUCCEEDED(hr) && img->d3d11.srv);
+                }
             }
         }
         else {
@@ -8021,9 +8029,10 @@ _SOKOL_PRIVATE sg_resource_state _sg_d3d11_create_image(_sg_image_t* img, const 
                     _sg_d3d11_AddRef(img->d3d11.srv);
                 }
             }
+            else {
 
-            if (0 == img->d3d11.tex3d) {
-                D3D11_TEXTURE3D_DESC d3d11_tex_desc;
+                if (0 == img->d3d11.tex3d) {
+                    D3D11_TEXTURE3D_DESC d3d11_tex_desc;
                 memset(&d3d11_tex_desc, 0, sizeof(d3d11_tex_desc));
                 d3d11_tex_desc.Width = (UINT)img->cmn.width;
                 d3d11_tex_desc.Height = (UINT)img->cmn.height;
@@ -8059,6 +8068,7 @@ _SOKOL_PRIVATE sg_resource_state _sg_d3d11_create_image(_sg_image_t* img, const 
                 d3d11_srv_desc.Texture3D.MipLevels = (UINT)img->cmn.num_mipmaps;
                 hr = _sg_d3d11_CreateShaderResourceView(_sg.d3d11.dev, (ID3D11Resource*)img->d3d11.tex3d, &d3d11_srv_desc, &img->d3d11.srv);
                 SOKOL_ASSERT(SUCCEEDED(hr) && img->d3d11.srv);
+            }
             }
         }
 
@@ -8565,10 +8575,6 @@ _SOKOL_PRIVATE _sg_context_t* _sg_lookup_context(const _sg_pools_t* p, uint32_t 
 _SOKOL_PRIVATE void _sg_d3d11_begin_pass(_sg_pass_t* pass, const sg_pass_action* action, int w, int h) {
     SOKOL_ASSERT(action);
     SOKOL_ASSERT(!_sg.d3d11.in_pass);
-    _sg_context_t* cur_context = _sg_lookup_context(&_sg.pools, _sg.active_context.id);
-    SOKOL_ASSERT(cur_context);
-    SOKOL_ASSERT(cur_context->render_target_view_cb || cur_context->render_target_view_userdata_cb);
-    SOKOL_ASSERT(cur_context->depth_stencil_view_cb || cur_context->depth_stencil_view_userdata_cb);
     _sg.d3d11.in_pass = true;
     _sg.d3d11.cur_width = w;
     _sg.d3d11.cur_height = h;
@@ -8586,10 +8592,10 @@ _SOKOL_PRIVATE void _sg_d3d11_begin_pass(_sg_pass_t* pass, const sg_pass_action*
     }
     else {
         /* render to default frame buffer */
-        /* FIXME: when should the (rtv+dsv)-callbacks be invoked ?
-         * _sg_activate_context ?
-         *
-         */
+        _sg_context_t* cur_context = _sg_lookup_context(&_sg.pools, _sg.active_context.id);
+        SOKOL_ASSERT(cur_context);
+        SOKOL_ASSERT(cur_context->render_target_view_cb || cur_context->render_target_view_userdata_cb);
+        SOKOL_ASSERT(cur_context->depth_stencil_view_cb || cur_context->depth_stencil_view_userdata_cb);
         _sg.d3d11.cur_pass = 0;
         _sg.d3d11.cur_pass_id.id = SG_INVALID_ID;
         _sg.d3d11.num_rtvs = 1;
@@ -8611,7 +8617,7 @@ _SOKOL_PRIVATE void _sg_d3d11_begin_pass(_sg_pass_t* pass, const sg_pass_action*
         SOKOL_ASSERT(_sg.d3d11.cur_rtvs[0] && _sg.d3d11.cur_dsv);
     }
     /* apply the render-target- and depth-stencil-views */
-    _sg_d3d11_OMSetRenderTargets(_sg.d3d11.ctx, SG_MAX_COLOR_ATTACHMENTS, _sg.d3d11.cur_rtvs, _sg.d3d11.cur_dsv);
+    _sg_d3d11_OMSetRenderTargets(_sg.d3d11.ctx, _sg.d3d11.num_rtvs, _sg.d3d11.cur_rtvs, _sg.d3d11.cur_dsv);
 
     /* set viewport and scissor rect to cover whole screen */
     D3D11_VIEWPORT vp;
