@@ -2298,7 +2298,7 @@ SOKOL_GFX_API_DECL void sg_apply_scissor_rectf(float x, float y, float width, fl
 SOKOL_GFX_API_DECL void sg_apply_pipeline(sg_pipeline pip);
 SOKOL_GFX_API_DECL void sg_apply_bindings(const sg_bindings* bindings);
 SOKOL_GFX_API_DECL void sg_apply_uniforms(sg_shader_stage stage, int ub_index, const sg_range* data);
-SOKOL_GFX_API_DECL void sg_draw(int base_element, int num_elements, int num_instances);
+SOKOL_GFX_API_DECL void sg_draw(int base_element, int num_elements, int num_instances, int vert_offset);
 SOKOL_GFX_API_DECL void sg_end_pass(void);
 SOKOL_GFX_API_DECL void sg_commit(void);
 
@@ -8807,22 +8807,22 @@ _SOKOL_PRIVATE void _sg_d3d11_apply_uniforms(sg_shader_stage stage_index, int ub
     _sg_d3d11_UpdateSubresource(_sg.d3d11.ctx, (ID3D11Resource*)cb, 0, NULL, data->ptr, 0, 0);
 }
 
-_SOKOL_PRIVATE void _sg_d3d11_draw(int base_element, int num_elements, int num_instances) {
+_SOKOL_PRIVATE void _sg_d3d11_draw(int base_element, int num_elements, int num_instances, int vert_offset) {
     SOKOL_ASSERT(_sg.d3d11.in_pass);
     if (_sg.d3d11.use_indexed_draw) {
         if (1 == num_instances) {
-            _sg_d3d11_DrawIndexed(_sg.d3d11.ctx, (UINT)num_elements, (UINT)base_element, 0);
+            _sg_d3d11_DrawIndexed(_sg.d3d11.ctx, (UINT)num_elements, (UINT)base_element, vert_offset);
         }
         else {
-            _sg_d3d11_DrawIndexedInstanced(_sg.d3d11.ctx, (UINT)num_elements, (UINT)num_instances, (UINT)base_element, 0, 0);
+            _sg_d3d11_DrawIndexedInstanced(_sg.d3d11.ctx, (UINT)num_elements, (UINT)num_instances, (UINT)base_element, vert_offset, 0);
         }
     }
     else {
         if (1 == num_instances) {
-            _sg_d3d11_Draw(_sg.d3d11.ctx, (UINT)num_elements, (UINT)base_element);
+            _sg_d3d11_Draw(_sg.d3d11.ctx, (UINT)num_elements, (UINT)base_element + vert_offset);
         }
         else {
-            _sg_d3d11_DrawInstanced(_sg.d3d11.ctx, (UINT)num_elements, (UINT)num_instances, (UINT)base_element, 0);
+            _sg_d3d11_DrawInstanced(_sg.d3d11.ctx, (UINT)num_elements, (UINT)num_instances, (UINT)base_element + vert_offset, 0);
         }
     }
 }
@@ -12713,13 +12713,13 @@ static inline void _sg_apply_uniforms(sg_shader_stage stage_index, int ub_index,
     #endif
 }
 
-static inline void _sg_draw(int base_element, int num_elements, int num_instances) {
+static inline void _sg_draw(int base_element, int num_elements, int num_instances, int vert_offset) {
     #if defined(_SOKOL_ANY_GL)
     _sg_gl_draw(base_element, num_elements, num_instances);
     #elif defined(SOKOL_METAL)
     _sg_mtl_draw(base_element, num_elements, num_instances);
     #elif defined(SOKOL_D3D11)
-    _sg_d3d11_draw(base_element, num_elements, num_instances);
+    _sg_d3d11_draw(base_element, num_elements, num_instances, vert_offset);
     #elif defined(SOKOL_WGPU)
     _sg_wgpu_draw(base_element, num_elements, num_instances);
     #elif defined(SOKOL_DUMMY_BACKEND)
@@ -14985,11 +14985,12 @@ SOKOL_API_IMPL void sg_apply_uniforms(sg_shader_stage stage, int ub_index, const
     _SG_TRACE_ARGS(apply_uniforms, stage, ub_index, data);
 }
 
-SOKOL_API_IMPL void sg_draw(int base_element, int num_elements, int num_instances) {
+SOKOL_API_IMPL void sg_draw(int base_element, int num_elements, int num_instances, int vert_offset) {
     SOKOL_ASSERT(_sg.valid);
     SOKOL_ASSERT(base_element >= 0);
     SOKOL_ASSERT(num_elements >= 0);
     SOKOL_ASSERT(num_instances >= 0);
+    SOKOL_ASSERT(vert_offset >= 0);
     #if defined(SOKOL_DEBUG)
         if (!_sg.bindings_valid) {
             SOKOL_LOG("attempting to draw without resource bindings");
@@ -15014,7 +15015,7 @@ SOKOL_API_IMPL void sg_draw(int base_element, int num_elements, int num_instance
         _SG_TRACE_NOARGS(err_draw_invalid);
         return;
     }
-    _sg_draw(base_element, num_elements, num_instances);
+    _sg_draw(base_element, num_elements, num_instances, vert_offset);
     _SG_TRACE_ARGS(draw, base_element, num_elements, num_instances);
 }
 

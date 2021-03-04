@@ -1424,7 +1424,7 @@ SOKOL_API_IMPL void simgui_render(ImDrawData* draw_data) {
                 const int scissor_w = (int) ((pcmd->ClipRect.z - pcmd->ClipRect.x) * dpi_scale);
                 const int scissor_h = (int) ((pcmd->ClipRect.w - pcmd->ClipRect.y) * dpi_scale);
                 sg_apply_scissor_rect(scissor_x, scissor_y, scissor_w, scissor_h, true);
-                sg_draw(base_element, (int)pcmd->ElemCount, 1);
+                sg_draw(base_element, (int)pcmd->ElemCount, 1, 0);
             }
             base_element += (int)pcmd->ElemCount;
         }
